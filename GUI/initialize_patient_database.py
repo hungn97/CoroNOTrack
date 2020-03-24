@@ -43,4 +43,3 @@ db.commit()
 
 cursor.execute("SELECT * FROM patients")
 print(cursor.fetchall())
-
