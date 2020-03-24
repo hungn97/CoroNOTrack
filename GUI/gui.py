@@ -336,7 +336,6 @@ class PageFour(tk.Frame):
         line10 = tk.Label(self, text = "Doctor Email: " + str(result[4]))
         line10.place(relx=0.15, rely=0.65)
 
-
         button1 = tk.Button(self, text="Exit",
                            command=lambda: controller.restart_program())
 
