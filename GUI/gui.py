@@ -122,17 +122,17 @@ class PageOne(tk.Frame):
 
         label1 = tk.Label(self,text='Badge ID')
         label1.pack()
-        controller.entry1 = tk.Entry(self,text='Badge ID')
+        controller.entry1 = tk.Entry(self)
         controller.entry1.pack(pady=5)
 
         label2 = tk.Label(self,text='Password')
         label2.pack()
-        controller.entry2 = tk.Entry(self,text='Password')
+        controller.entry2 = tk.Entry(self,show='*')
         controller.entry2.pack(pady=5)
 
         label3 = tk.Label(self,text='Patient ID')
         label3.pack()
-        controller.entry3 = tk.Entry(self,text='Patient ID')
+        controller.entry3 = tk.Entry(self)
         controller.entry3.pack(pady=5)
 
         button1 = tk.Button(self, text='Sign In',
@@ -252,7 +252,7 @@ class PageThree(tk.Frame):
 
         label7 = tk.Label(self,text='Password')
         label7.pack()
-        controller.entry7 = tk.Entry(self)
+        controller.entry7 = tk.Entry(self, show='*')
         controller.entry7.pack(pady=5)       
 
         button1 = tk.Button(self, text='Sign In',
@@ -335,6 +335,7 @@ class PageFour(tk.Frame):
         line9.place(relx=0.15, rely=0.6)
         line10 = tk.Label(self, text = "Doctor Email: " + str(result[4]))
         line10.place(relx=0.15, rely=0.65)
+
 
         button1 = tk.Button(self, text="Exit",
                            command=lambda: controller.restart_program())
