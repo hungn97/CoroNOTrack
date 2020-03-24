@@ -1,22 +1,22 @@
 
-   ##### Doctor's LogIns ####
+   # Doctor's LogIns
 
-- **Dr. Hung Nguyen**: Badge ID: 30096073, Password: password, Patient ID: 1
-- **Dr. Dylan Banh**: Badge ID: 12131415, Password: password, Patient ID: 2
-- **Dr. Long Nguyen**: Badge ID: 13141516, Password: password, Patient ID: 3
-- **Dr. Solomon Wang**: Badge ID: 14151617, Password: password, Patient ID: 4
+- **Dr. Hung Nguyen**: *Badge ID*: 30096073, *Password*: password, *Patient ID*: 1
+- **Dr. Dylan Banh**: *Badge ID*: 12131415, *Password*: password, *Patient ID*: 2
+- **Dr. Long Nguyen**: *Badge ID*: 13141516, *Password*: password, *Patient ID*: 3
+- **Dr. Solomon Wang**: *Badge ID*: 14151617, *Password*: password, *Patient ID*: 4
 
 ---------------------------------------------------------------------------------------------------------
 
-   #### Patient's LogIns ####
+   # Patient's LogIns
 	
-- **Bob Smith**: First name: Bob, Last name: Smith, Patient ID#: 1, Password: 123456
-- **Justin Bieber**: First name: Justin, Last name: Bieber, Patient ID#: 2, Password: oof123 
-- **Travis Scott**: First name: Travis, Last name: Scott, Patient ID#: 3, Password: 123oof
-- **Miley Cyrus**: First name: Miley, Last name: Cyrus, Patient ID#: 4, Password: 777hi
+- **Bob Smith**: *First name*: Bob, *Last name*: Smith, *Patient ID#*: 1, *Password*: 123456
+- **Justin Bieber**: *First name*: Justin, *Last name*: Bieber, *Patient ID#*: 2, *Password*: oof123 
+- **Travis Scott**: *First name*: Travis, *Last name*: Scott, *Patient ID#*: 3, *Password*: 123oof
+- **Miley Cyrus**: *First name*: Miley, *Last name*: Cyrus, *Patient ID#*: 4, *Password*: 777hi
 
 ---------------------------------------------------------------------------------------------------------
-   #### Instructions ####
+   #### Instructions
 
 1. **To run GUI:**
 		- Include gui.py, patient_database.db and doctor_database.db in the same folder.
