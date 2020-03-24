@@ -36,4 +36,3 @@ db.commit()
 
 cursor.execute("SELECT * FROM user")
 print(cursor.fetchall())
-
