@@ -1,38 +1,120 @@
 import sqlite3
+import aes
 
-with sqlite3.connect("doctor_database.db") as db:
-    cursor = db.cursor()
+def main():
+    with sqlite3.connect("doctor_database.db") as db:
+        cursor = db.cursor()
 
-cursor.execute("""CREATE TABLE IF NOT EXISTS user(
-        userid INTEGER PRIMARY KEY,
-        userpw VARCHAR(20) NOT NULL,
-        patientid VARCHAR(20) NOT NULL,
-        phone VARCHAR(20) NOT NULL,
-        email VARCHAR(20) NOT NULL,
-        first_name VARCHAR(20) NOT NULL,
-        last_name VARCHAR(20) NOT NULL
-)""")
+    cursor.execute("""CREATE TABLE IF NOT EXISTS user(
+            userid VARBINARY(300) NOT NULL,
+            userpw VARBINARY(300) NOT NULL,
+            patientid VARBINARY(300) NOT NULL,
+            phone VARBINARY(300) NOT NULL,
+            email VARBINARY(300) NOT NULL,
+            first_name VARBINARY(300) NOT NULL,
+            last_name VARBINARY(300) NOT NULL
+    )""")
 
-cursor.execute("""
-INSERT INTO user(userid,userpw,patientid,phone,email,first_name,last_name)
-VALUES("30096073","password","1","(843)-254-5417","hunnguyen@umass.edu","Hung","Nguyen")
-""")
+    User = aes.encrypt('1111','30096073')
+    Password = aes.hash_password('password')
+    Phone = aes.encrypt('1111','(843)-254-5417')
+    Email = aes.encrypt('1111','hunnguyen@umass.edu')
+    FirstN = aes.encrypt('1111','Hung')
+    LastN = aes.encrypt('1111','Nguyen')
 
-cursor.execute("""
-INSERT INTO user(userid,userpw,patientid,phone,email,first_name,last_name)
-VALUES("12131415","password","2","(651)-433-6472","dylanbanh@umass.edu","Dylan","Banh")
-""")
+    params = (User,Password,"1111",Phone,Email,FirstN,LastN)
 
-cursor.execute("""
-INSERT INTO user(userid,userpw,patientid,phone,email,first_name,last_name)
-VALUES("13141516","password","3","(144)-782-1916","lonnguyen@umass.edu","Long","Nguyen")
-""")
+    cursor.execute("""
+    INSERT INTO user(userid,userpw,patientid,phone,email,first_name,last_name)
+    VALUES(?,?,?,?,?,?,?)""", params)
 
-cursor.execute("""
-INSERT INTO user(userid,userpw,patientid,phone,email,first_name,last_name)
-VALUES("14151617","password","4","(325)-755-9043","solomonwang@umass.edu","Solomon","Wang")
-""")
-db.commit()
+    User = aes.encrypt('1112','12131415')
+    Password = aes.hash_password('password')
+    Phone = aes.encrypt('1112','(651)-433-6472')
+    Email = aes.encrypt('1112','dylanbanh@umass.edu')
+    FirstN = aes.encrypt('1112','Dylan')
+    LastN = aes.encrypt('1112','Banh')
 
-cursor.execute("SELECT * FROM user")
-print(cursor.fetchall())
+    params = (User,Password,"1112",Phone,Email,FirstN,LastN)
+
+    cursor.execute("""
+    INSERT INTO user(userid,userpw,patientid,phone,email,first_name,last_name)
+    VALUES(?,?,?,?,?,?,?)""", params)
+
+    User = aes.encrypt('1113','13141516')
+    Password = aes.hash_password('password')
+    Phone = aes.encrypt('1113','(144)-782-1916')
+    Email = aes.encrypt('1113','lonnguyen@umass.edu')
+    FirstN = aes.encrypt('1113','Long')
+    LastN = aes.encrypt('1113','Nguyen')
+
+    params = (User,Password,"1113",Phone,Email,FirstN,LastN)
+
+    cursor.execute("""
+    INSERT INTO user(userid,userpw,patientid,phone,email,first_name,last_name)
+    VALUES(?,?,?,?,?,?,?)""", params)
+
+    User = aes.encrypt('1114','14151617')
+    Password = aes.hash_password('password')
+    Phone = aes.encrypt('1114','(325)-755-9043')
+    Email = aes.encrypt('1114','solomonwang@umass.edu')
+    FirstN = aes.encrypt('1114','Solomon')
+    LastN = aes.encrypt('1114','Wang')
+
+    params = (User,Password,"1114",Phone,Email,FirstN,LastN)
+
+    cursor.execute("""
+    INSERT INTO user(userid,userpw,patientid,phone,email,first_name,last_name)
+    VALUES(?,?,?,?,?,?,?)""", params)
+
+    db.commit()
+
+    cursor.execute("SELECT * FROM user")
+    print(cursor.fetchall())
+
+def decrypting(patientid):
+    if (patientid == '1111'):
+        User = aes.decrypt('1111',aes.encrypt('1111','30096073')).decode('ascii')
+        #Password
+        Phone = aes.decrypt('1111',aes.encrypt('1111','(843)-254-5417')).decode('ascii')
+        Email = aes.decrypt('1111',aes.encrypt('1111','hunnguyen@umass.edu')).decode('ascii')
+        FirstN = aes.decrypt('1111',aes.encrypt('1111','Hung')).decode('ascii')
+        LastN = aes.decrypt('1111',aes.encrypt('1111','Nguyen')).decode('ascii')
+        
+        return (User,Phone,Email,FirstN,LastN)
+
+    if (patientid == '1112'):
+        User = aes.decrypt('1112',aes.encrypt('1112','12131415')).decode('ascii')
+        #Password
+        Phone = aes.decrypt('1112',aes.encrypt('1112','(651)-433-6472')).decode('ascii')
+        Email = aes.decrypt('1112',aes.encrypt('1112','dylanbanh@umass.edu')).decode('ascii')
+        FirstN = aes.decrypt('1112',aes.encrypt('1112','Dylan')).decode('ascii')
+        LastN = aes.decrypt('1112',aes.encrypt('1112','Banh')).decode('ascii')
+        
+        return (User,Phone,Email,FirstN,LastN)
+
+    if (patientid == '1113'):
+        User = aes.decrypt('1113',aes.encrypt('1113','13141516')).decode('ascii')
+        #Password
+        Phone = aes.decrypt('1113',aes.encrypt('1113','(144)-782-1916')).decode('ascii')
+        Email = aes.decrypt('1113',aes.encrypt('1113','lonnguyen@umass.edu')).decode('ascii')
+        FirstN = aes.decrypt('1113',aes.encrypt('1113','Long')).decode('ascii')
+        LastN = aes.decrypt('1113',aes.encrypt('1113','Nguyen')).decode('ascii')
+        
+        return (User,Phone,Email,FirstN,LastN)
+
+    if (patientid == '1114'):
+        User = aes.decrypt('1114',aes.encrypt('1114','14151617')).decode('ascii')
+        #Password
+        Phone = aes.decrypt('1114',aes.encrypt('1114','(325)-755-9043')).decode('ascii')
+        Email = aes.decrypt('1114',aes.encrypt('1114','solomonwang@umass.edu')).decode('ascii')
+        FirstN = aes.decrypt('1114',aes.encrypt('1114','Solomon')).decode('ascii')
+        LastN = aes.decrypt('1114',aes.encrypt('1114','Wang')).decode('ascii')
+        
+        return (User,Phone,Email,FirstN,LastN)
+
+if __name__ == "__main__": 
+    main()
+else: 
+    pass
+
