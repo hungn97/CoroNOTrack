@@ -4,9 +4,13 @@ import sys
 import os
 import json
 import tkinter as tk
+from tkinter import *
 from tkinter import ttk
 from tkinter import font as tkfont
 import sqlite3
+import aes
+import patient_database
+import doctor_database
 
 class SampleApp(tk.Tk):
 
@@ -147,13 +151,19 @@ class PageOne(tk.Frame):
         doctorid = self.controller.entry1.get()
         doctorpw = self.controller.entry2.get()
         patientid = self.controller.entry3.get()
-        find_user = ("SELECT * FROM user WHERE userid = ? AND userpw = ? AND patientid = ?")
-        self.cursor.execute(find_user,[(doctorid),(doctorpw),(patientid)])
+
+        find_user = ("SELECT * FROM user WHERE patientid = ?")
+        self.cursor.execute(find_user,[(patientid)])
         results = self.cursor.fetchall()
 
-        if results:
-            for i in results:
-                self.controller.new_frame(PageTwo)
+        if results: 
+            (One,Two,Three,Four,Five) = doctor_database.decrypting(patientid)
+            if (doctorid == One and aes.verify_password(results[0][1], doctorpw)):
+                for i in results:
+                    self.controller.new_frame(PageTwo)
+            else:
+                query_label = tk.Label(self, text="We are not able to verify your information. Please try again.")
+                query_label.place(relx=0.15, rely=0.60)
 
         else:
             query_label = tk.Label(self, text="We are not able to verify your information. Please try again.")
@@ -177,8 +187,8 @@ class PageTwo(tk.Frame):
         patientid = controller.entry3.get()
         id = patientid
 
-        find_user = ("SELECT * FROM user WHERE userid = ? AND userpw = ? AND patientid = ?")
-        self.cursor.execute(find_user,[(doctorid),(doctorpw),(patientid)])
+        find_user = ("SELECT * FROM user WHERE patientid = ?")
+        self.cursor.execute(find_user,[(patientid)])
         results = self.cursor.fetchall()
 
         find_patient = ("SELECT * FROM patients WHERE id = ?")
@@ -188,31 +198,36 @@ class PageTwo(tk.Frame):
         result2 = results2[0]
         result = results[0]
 
-        label = tk.Label(self, text='Welcome, Dr. ' + str(result[5]) + ' ' + str(result[6]) , font=controller.header_font)
+        (One,Two,Three,Four,Five) = doctor_database.decrypting(patientid)
+        #(User,Phone,Email,FirstN,LastN)
+        (Six,Seven,Eight,Nine,Ten,Eleven,Twelves,Thirteen,Fourteen,Fifteen) = patient_database.decrypting(patientid)
+        #(Bob,Smith,Address,City,State,Zip,Phone,Email,Ename,Ephone)
+
+        label = tk.Label(self, text='Welcome, Dr. ' + Four + ' ' + Five , font=controller.header_font)
         label.pack(side='top', pady=20)
 
         query_label = tk.Label(self, text="Attached below is the patient's information that you requested.", font = controller.helv28i)
         query_label.place(relx=0.1, rely=0.1)
 
-        line1 = tk.Label(self, text = "First Name: " + str(result2[0]))
+        line1 = tk.Label(self, text = "First Name: " + Six)
         line1.place(relx=0.15, rely=0.2)
-        line2 = tk.Label(self, text = "Last Name: " + str(result2[1]))
+        line2 = tk.Label(self, text = "Last Name: " + Seven)
         line2.place(relx=0.15, rely=0.25)
-        line3 = tk.Label(self, text = "Address: " + str(result2[2]))
+        line3 = tk.Label(self, text = "Address: " + Eight)
         line3.place(relx=0.15, rely=0.3)
-        line4 = tk.Label(self, text = "City: " + str(result2[3]))
+        line4 = tk.Label(self, text = "City: " + Nine)
         line4.place(relx=0.15, rely=0.35)
-        line5 = tk.Label(self, text = "State: " + str(result2[4]))
+        line5 = tk.Label(self, text = "State: " + Ten)
         line5.place(relx=0.15, rely=0.4)
-        line6 = tk.Label(self, text = "Zipcode: " + str(result2[5]))
+        line6 = tk.Label(self, text = "Zipcode: " + Eleven)
         line6.place(relx=0.15, rely=0.45) 
-        line7 = tk.Label(self, text = "Phone Number: " + str(result2[6]))
+        line7 = tk.Label(self, text = "Phone Number: " + Twelves)
         line7.place(relx=0.15, rely=0.5)
-        line8 = tk.Label(self, text = "Email: " + str(result2[10]))
+        line8 = tk.Label(self, text = "Email: " + Thirteen)
         line8.place(relx=0.15, rely=0.55)
-        line9 = tk.Label(self, text = "Emergency Contact: " + str(result2[11]), font = controller.helv28i)
+        line9 = tk.Label(self, text = "Emergency Contact: " + Fourteen, font = controller.helv28i)
         line9.place(relx=0.15, rely=0.6)
-        line10 = tk.Label(self, text = "Emergency Phone: " + str(result2[12]), font = controller.helv28i)
+        line10 = tk.Label(self, text = "Emergency Phone: " + Fifteen, font = controller.helv28i)
         line10.place(relx=0.15, rely=0.65)
 
         button1 = tk.Button(self, text="Exit",
@@ -268,13 +283,19 @@ class PageThree(tk.Frame):
         id = self.controller.entry6.get()
         password = self.controller.entry7.get()
 
-        find_patient = ("SELECT * FROM patients WHERE first_name = ? AND last_name = ? AND id = ? AND password = ?")
-        self.cursor.execute(find_patient,[(first_name),(last_name),(id),(password)])
+        find_patient = ("SELECT * FROM patients WHERE id = ?")
+        self.cursor.execute(find_patient,[(id)])
         results = self.cursor.fetchall()
 
-        if results:
-            for i in results:
-                self.controller.new_frame(PageFour)
+        if results: 
+            (Six,Seven,Eight,Nine,Ten,Eleven,Twelves,Thirteen,Fourteen,Fifteen) = patient_database.decrypting(id)
+            #(Bob,Smith,Address,City,State,Zip,Phone,Email,Ename,Ephone)
+            if (first_name == Six and last_name == Seven and aes.verify_password(results[0][7], password)):
+                for i in results:
+                    self.controller.new_frame(PageFour)
+            else:
+                query_label = tk.Label(self, text="We are not able to verify your information. Please try again.")
+                query_label.place(relx=0.15, rely=0.66)
 
         else:
             query_label = tk.Label(self, text="We are not able to verify your information. Please try again.")
@@ -298,11 +319,8 @@ class PageFour(tk.Frame):
         password = controller.entry7.get()
         patientid = id
 
-        label = tk.Label(self, text='Welcome, ' + first_name, font=controller.header_font)
-        label.pack(side='top', fill='x', pady=20)
-
-        find_patient = ("SELECT * FROM patients WHERE first_name = ? AND last_name = ? AND id = ? AND password = ?")
-        self.cursor2.execute(find_patient,[(first_name),(last_name),(id),(password)])
+        find_patient = ("SELECT * FROM patients WHERE id = ?")
+        self.cursor2.execute(find_patient,[(id)])
         results2 = self.cursor2.fetchall()
 
         find_user = ("SELECT * FROM user WHERE patientid = ?")
@@ -312,28 +330,36 @@ class PageFour(tk.Frame):
         result2 = results2[0]
         result = results[0]
 
+        (One,Two,Three,Four,Five) = doctor_database.decrypting(id)
+        #(User,Phone,Email,FirstN,LastN)
+        (Six,Seven,Eight,Nine,Ten,Eleven,Twelves,Thirteen,Fourteen,Fifteen) = patient_database.decrypting(id)
+        #(Bob,Smith,Address,City,State,Zip,Phone,Email,Ename,Ephone)
+
+        label = tk.Label(self, text='Welcome, ' + Six, font=controller.header_font)
+        label.pack(side='top', fill='x', pady=20)
+
         query_label = tk.Label(self, text="Attached below is the information that you requested.", font = controller.helv28i)
         query_label.place(relx=0.15, rely=0.1)
 
-        line1 = tk.Label(self, text = "First Name: " + str(result2[0]))
+        line1 = tk.Label(self, text = "First Name: " + Six)
         line1.place(relx=0.15, rely=0.2)
-        line2 = tk.Label(self, text = "Last Name: " + str(result2[1]))
+        line2 = tk.Label(self, text = "Last Name: " + Seven)
         line2.place(relx=0.15, rely=0.25)
-        line3 = tk.Label(self, text = "Address: " + str(result2[2]))
+        line3 = tk.Label(self, text = "Address: " + Eight)
         line3.place(relx=0.15, rely=0.3)
-        line4 = tk.Label(self, text = "City: " + str(result2[3]))
+        line4 = tk.Label(self, text = "City: " + Nine)
         line4.place(relx=0.15, rely=0.35)
-        line5 = tk.Label(self, text = "State: " + str(result2[4]))
+        line5 = tk.Label(self, text = "State: " + Ten)
         line5.place(relx=0.15, rely=0.4)
-        line6 = tk.Label(self, text = "Zipcode: " + str(result2[5]))
+        line6 = tk.Label(self, text = "Zipcode: " + Eleven)
         line6.place(relx=0.15, rely=0.45) 
-        line7 = tk.Label(self, text = "Phone Number: " + str(result2[6]))
+        line7 = tk.Label(self, text = "Phone Number: " + Twelves)
         line7.place(relx=0.15, rely=0.5)
-        line8 = tk.Label(self, text = "Doctor Responsible: Dr. " + str(result[5]) + ' ' + str(result[6]))
+        line8 = tk.Label(self, text = "Doctor Responsible: Dr. " + Four + ' ' + Five)
         line8.place(relx=0.15, rely=0.55)
-        line9 = tk.Label(self, text = "Doctor Phone Number: " + str(result[3]))
+        line9 = tk.Label(self, text = "Doctor Phone Number: " + Two)
         line9.place(relx=0.15, rely=0.6)
-        line10 = tk.Label(self, text = "Doctor Email: " + str(result[4]))
+        line10 = tk.Label(self, text = "Doctor Email: " + Three)
         line10.place(relx=0.15, rely=0.65)
 
 
