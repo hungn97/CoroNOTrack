@@ -15,7 +15,7 @@ def main():
             last_name VARBINARY(300) NOT NULL
     )""")
 
-    User = aes.encrypt('1111','30096073')
+    User = aes.hash_password('30096073')
     Password = aes.hash_password('password')
     Phone = aes.encrypt('1111','(843)-254-5417')
     Email = aes.encrypt('1111','hunnguyen@umass.edu')
@@ -28,7 +28,7 @@ def main():
     INSERT INTO user(userid,userpw,patientid,phone,email,first_name,last_name)
     VALUES(?,?,?,?,?,?,?)""", params)
 
-    User = aes.encrypt('1112','12131415')
+    User = aes.hash_password('12131415')
     Password = aes.hash_password('password')
     Phone = aes.encrypt('1112','(651)-433-6472')
     Email = aes.encrypt('1112','dylanbanh@umass.edu')
@@ -41,7 +41,7 @@ def main():
     INSERT INTO user(userid,userpw,patientid,phone,email,first_name,last_name)
     VALUES(?,?,?,?,?,?,?)""", params)
 
-    User = aes.encrypt('1113','13141516')
+    User = aes.hash_password('13141516')
     Password = aes.hash_password('password')
     Phone = aes.encrypt('1113','(144)-782-1916')
     Email = aes.encrypt('1113','lonnguyen@umass.edu')
@@ -54,7 +54,7 @@ def main():
     INSERT INTO user(userid,userpw,patientid,phone,email,first_name,last_name)
     VALUES(?,?,?,?,?,?,?)""", params)
 
-    User = aes.encrypt('1114','14151617')
+    User = aes.hash_password('14151617')
     Password = aes.hash_password('password')
     Phone = aes.encrypt('1114','(325)-755-9043')
     Email = aes.encrypt('1114','solomonwang@umass.edu')
@@ -74,47 +74,46 @@ def main():
 
 def decrypting(patientid):
     if (patientid == '1111'):
-        User = aes.decrypt('1111',aes.encrypt('1111','30096073')).decode('ascii')
+        #User
         #Password
         Phone = aes.decrypt('1111',aes.encrypt('1111','(843)-254-5417')).decode('ascii')
         Email = aes.decrypt('1111',aes.encrypt('1111','hunnguyen@umass.edu')).decode('ascii')
         FirstN = aes.decrypt('1111',aes.encrypt('1111','Hung')).decode('ascii')
         LastN = aes.decrypt('1111',aes.encrypt('1111','Nguyen')).decode('ascii')
         
-        return (User,Phone,Email,FirstN,LastN)
+        return (Phone,Email,FirstN,LastN)
 
     if (patientid == '1112'):
-        User = aes.decrypt('1112',aes.encrypt('1112','12131415')).decode('ascii')
+        #User
         #Password
         Phone = aes.decrypt('1112',aes.encrypt('1112','(651)-433-6472')).decode('ascii')
         Email = aes.decrypt('1112',aes.encrypt('1112','dylanbanh@umass.edu')).decode('ascii')
         FirstN = aes.decrypt('1112',aes.encrypt('1112','Dylan')).decode('ascii')
         LastN = aes.decrypt('1112',aes.encrypt('1112','Banh')).decode('ascii')
         
-        return (User,Phone,Email,FirstN,LastN)
+        return (Phone,Email,FirstN,LastN)
 
     if (patientid == '1113'):
-        User = aes.decrypt('1113',aes.encrypt('1113','13141516')).decode('ascii')
+        #User
         #Password
         Phone = aes.decrypt('1113',aes.encrypt('1113','(144)-782-1916')).decode('ascii')
         Email = aes.decrypt('1113',aes.encrypt('1113','lonnguyen@umass.edu')).decode('ascii')
         FirstN = aes.decrypt('1113',aes.encrypt('1113','Long')).decode('ascii')
         LastN = aes.decrypt('1113',aes.encrypt('1113','Nguyen')).decode('ascii')
         
-        return (User,Phone,Email,FirstN,LastN)
+        return (Phone,Email,FirstN,LastN)
 
     if (patientid == '1114'):
-        User = aes.decrypt('1114',aes.encrypt('1114','14151617')).decode('ascii')
+        #User
         #Password
         Phone = aes.decrypt('1114',aes.encrypt('1114','(325)-755-9043')).decode('ascii')
         Email = aes.decrypt('1114',aes.encrypt('1114','solomonwang@umass.edu')).decode('ascii')
         FirstN = aes.decrypt('1114',aes.encrypt('1114','Solomon')).decode('ascii')
         LastN = aes.decrypt('1114',aes.encrypt('1114','Wang')).decode('ascii')
         
-        return (User,Phone,Email,FirstN,LastN)
+        return (Phone,Email,FirstN,LastN)
 
 if __name__ == "__main__": 
     main()
 else: 
     pass
-
