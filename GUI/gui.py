@@ -86,8 +86,14 @@ class SampleApp(tk.Tk):
 class StartPage(tk.Frame):
 
     def __init__(self, parent, controller):
-        tk.Frame.__init__(self, parent)
+        tk.Frame.__init__(self, parent, width=20)
+        w = 500
+        ws = self.winfo_toplevel().winfo_screenwidth()
+        x = (ws/2) - (w/2)
+        self.winfo_toplevel().geometry("%+d%+d" % (x, 45))
+        self.winfo_toplevel().title("CoroNOTrack")
         self.controller = controller
+
 
         #------------------------------ Title ------------------------------#
         label = tk.Label(self, text='CoroNO Track',
@@ -189,6 +195,13 @@ class PageTwo(tk.Frame):
 
     def __init__(self, parent, controller):
         tk.Frame.__init__(self, parent)
+        # w = 1000
+        # h = 600
+        # ws = self.winfo_toplevel().winfo_screenwidth()
+        # hs = self.winfo_toplevel().winfo_screenheight()
+        # x = (ws/2) - (w/2)
+        # y = (hs/2) - (h/2)
+        # self.winfo_toplevel().geometry("%+d%+d" % (x, y))
         self.controller = controller
 
         # CONNECT WITH THE DATABASE FILES THROUGH THE SQLITE3 CONNECTOR
@@ -229,8 +242,8 @@ class PageTwo(tk.Frame):
         #------------------------------------------------------ Header -------------------------------------------------------#
         label = tk.Label(self, text='Welcome, Dr. ' + Four + ' ' + Five , font=controller.header_font)
         label.pack(side='top', pady=20)
-        query_label = tk.Label(self, text="Attached below is the patient's information that you requested.", font = controller.helv28i)
-        query_label.place(relx=0.1, rely=0.1)
+        query_label = tk.Label(self, text="Attached below is the information that you requested.", font = controller.helv28i)
+        query_label.place(relx=0.5, rely=0.1, anchor="center")
         #---------------------------------------------------------------------------------------------------------------------#
 
         # MATCH UP GAME, MATCH THESE INFOS WITH THE APPROPRIATE NUMBER
@@ -388,7 +401,7 @@ class PageFour(tk.Frame):
         label = tk.Label(self, text='Welcome, ' + Six, font=controller.header_font)
         label.pack(side='top', fill='x', pady=20)
         query_label = tk.Label(self, text="Attached below is the information that you requested.", font = controller.helv28i)
-        query_label.place(relx=0.15, rely=0.1)
+        query_label.place(relx=0.5, rely=0.1, anchor="center")
         #---------------------------------------------------------------------------------------------------------------------#
 
         # MATCH UP GAME, MATCH THESE INFOS WITH THE APPROPRIATE NUMBER
