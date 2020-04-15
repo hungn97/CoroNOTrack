@@ -1,3 +1,8 @@
+from cryptography.fernet import Fernet
+from cryptography.hazmat.backends import default_backend
+from cryptography.hazmat.primitives.asymmetric import padding
+from cryptography.hazmat.primitives import hashes
+from cryptography.hazmat.primitives import serialization
 from Crypto import Random
 from Crypto.Cipher import AES
 import os
@@ -14,7 +19,7 @@ ticketts = 'temp'
 #^no longer needed, ssl should handle it
 
 ticketKey = 'temp'                                          #key to decrypt the ticket
-dataKey = b'\xad&dB\xfdLA4\xb9kjV\xc2\x0f\xab\x1e'          #key to decrypt the data from the record server\
+dataKey = 'zDN1HN3taSHSHsvE0kAKRNY55VSTiLT9JEvjjXUfW2o='          #key to decrypt the data from the record server\
 
 record = 'temp'
 aesRecord = 'temp'
@@ -81,72 +86,41 @@ def dataUpload(json_file):
         else:
             with open(json_file) as fo:
                 data = json.loads(fo.read())
-                encrypted = enc.encrypt(data['record'].encode("latin1"), dataKey)
+
+                encrypted = enc.encrypt(data['record'].encode("latin1"))
+
                 data['ds'] = data['ds'].encode("latin1")          
                 os.remove(json_file)
-            shutil.move(enc.format(name, encrypted, data['ds']), path)
+            shutil.move(format(name, encrypted, data['ds']), path)
             print('\nMessage: File successfully stored into the database!\n')
                 
 
 def dataRequest(pID):                                      #open file folder and look for file with pID
     path = 'Database/Patient Records/'
     fileList = os.listdir(path)
+
     for i in fileList:
         if os.path.isfile(os.path.join(path,pID + '.json')):
             with open(os.path.join(path,pID + '.json')) as fo:
+
                 data = json.loads(fo.read())
-                dec = enc.decrypt(data['record'].encode("latin1"), dataKey)
+                dec = enc.decrypt(data['record'].encode("latin1"))
+                
                 with open(pID + '.pdf', 'wb') as fo:
                     fo.write(dec)
                 data['ds'] = data['ds'].encode("latin1")
-                enc.format(pID,dec,data['ds'])
+                
+                format(pID,dec,data['ds'])
+                
                 print ('\nMessage: File successfully returned!\n')
                 break
         else:
             print('\nError: Patient file does not exist!\n')
             return -1
 
-class Hung:
-
-    def __init__(self, key):
-        self.key = key
-
-    def pad(self, s):
-        return s + b"\0" * (AES.block_size - len(s) % AES.block_size)
-
-    def encrypt(self, message, key, key_size=256):
-        message = self.pad(message)
-        iv = Random.new().read(AES.block_size)
-        cipher = AES.new(key, AES.MODE_CBC, iv)
-        return iv + cipher.encrypt(message)
-
-    def encrypt_file(self, file): # A byte array will be coming in to be encrypted into a file
-        name = str(input("Enter the patient ID of the patient you are uploading record for: "))
-        with open(file, 'rb') as fo:
-            plaintext = fo.read()                 # This will be coming in as data
-        enc = self.encrypt(plaintext, self.key)     # Encrypt the data
-        with open(name + ".pdf.enc", 'wb') as fo:   # Write it to a .enc file
-            fo.write(enc) 
-        # os.remove(plaintext)          
-        self.format(name, enc, self.key)
-
-    def decrypt(self, ciphertext, key):
-        iv = ciphertext[:AES.block_size]
-        cipher = AES.new(key, AES.MODE_CBC, iv)
-        plaintext = cipher.decrypt(ciphertext[AES.block_size:])
-        return plaintext.rstrip(b"\0")
-
-    def decrypt_file(self, pid):
-        with open(pid +'.json', 'rb') as fo:
-            ciphertext = fo.read()
-        dec = self.decrypt(ciphertext, self.key)
-        with open(pid + '.pdf', 'wb') as fo:
-            fo.write(dec)
-        os.remove(pid + '.pdf.enc')
-
-    def format(self, name, enc, ds): 
-    # Format to store into database
-        data = {
+def format(self, name, enc, ds): 
+   # Format to store into database
+	data = {
             "record": enc.decode("latin1"),
             "ds": ds.decode("latin1") 
         }
@@ -161,7 +135,7 @@ class Hung:
 # ds = data["ds"])
 # #############################################
 
-enc = Hung(dataKey)
+enc = Fernet(dataKey)
 clear = lambda: os.system('clear')
 
 ################################## UPLOAD ####################################
