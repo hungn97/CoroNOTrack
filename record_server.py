@@ -3,13 +3,13 @@ from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives.asymmetric import padding
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives import serialization
-from Crypto import Random
-from Crypto.Cipher import AES
 import os
 import os.path
 import sys
 import json
 import shutil
+import hashlib
+import binascii
 
 patientID = "temp"
 docID = 'temp'
@@ -46,7 +46,6 @@ def getRecord(pID, Ticket, TS):                          #pID is patient ID, Tic
 		timestamp = TS
 
 		if verifyTicket(Ticket, TS):                      #if ticket is valid
-
 			aesRecord = aes.encrypt(record.data)               #encrypt record and signature
 			return aesRecord                                   #send it back
 
@@ -76,8 +75,6 @@ def verifyTicket(Ticket, TS):
 def dataUpload(json_file):
     path = 'Database/Patient Records/'
     fileList = os.listdir(path)
-    file_name = json_file.split('.')
-    name = file_name[0]
 
     for i in fileList:
         if os.path.isfile(os.path.join(path,json_file)):
@@ -90,8 +87,8 @@ def dataUpload(json_file):
                 encrypted = enc.encrypt(data['record'].encode("latin1"))
 
                 data['ds'] = data['ds'].encode("latin1")          
-                os.remove(json_file)
-            shutil.move(format(name, encrypted, data['ds']), path)
+                # os.remove(json_file)
+            shutil.move(format_in(json_file, encrypted, data['ds'], data['did'], data['pid'],data['role']), path)
             print('\nMessage: File successfully stored into the database!\n')
                 
 
@@ -110,7 +107,7 @@ def dataRequest(pID):                                      #open file folder and
                     fo.write(dec)
                 data['ds'] = data['ds'].encode("latin1")
                 
-                format(pID,dec,data['ds'])
+                format_out(pID,dec,data['ds'])
                 
                 print ('\nMessage: File successfully returned!\n')
                 break
@@ -118,16 +115,36 @@ def dataRequest(pID):                                      #open file folder and
             print('\nError: Patient file does not exist!\n')
             return -1
 
-def format(self, name, enc, ds): 
-   # Format to store into database
-	data = {
-            "record": enc.decode("latin1"),
-            "ds": ds.decode("latin1") 
+def format_out(name, enc, ds): 
+# Format to go out of record server
+    data = {
+        "record": enc.decode("latin1"),
+        "ds": ds.decode("latin1") 
         }
-        with open(name +'.json', 'w') as fo:
-            json.dump(data,fo)
+    
+    with open(name +'.json', 'w') as fo:
+        json.dump(data,fo)
         
-        return name + '.json'
+    return name + '.json'
+
+def format_in(file_name, enc, ds, did, pid, role):
+# Format to store into database
+
+    did = hashlib.sha256(did.encode('ascii'))
+    pid = hashlib.sha256(pid.encode('ascii'))
+    
+    data = {
+        "did": did.hexdigest(),
+        "pid": pid.hexdigest(),
+        "role": role,
+        "record": enc.decode('latin1'),
+        "ds": ds.decode('latin1')
+    }
+    
+    with open(file_name, 'w') as fo:
+        json.dump(data,fo)
+        
+    return file_name
 
 # ############# Receive Message ###############
 # data = message
