@@ -129,13 +129,10 @@ def format_out(name, enc, ds):
 
 def format_in(file_name, enc, ds, did, pid, role):
 # Format to store into database
-
-    did = hashlib.sha256(did.encode('ascii'))
-    pid = hashlib.sha256(pid.encode('ascii'))
     
     data = {
-        "did": did.hexdigest(),
-        "pid": pid.hexdigest(),
+        "did": did,
+        "pid": pid,
         "role": role,
         "record": enc.decode('latin1'),
         "ds": ds.decode('latin1')
