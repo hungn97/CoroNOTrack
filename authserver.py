@@ -12,9 +12,16 @@ import time
 with sqlite3.connect("doctor_database.db") as db:
     cursor = db.cursor()
 
+with open("authkey.txt", "rb") as fo:
+    '''Key for encryption/decryption'''
+    dataKey = fo.read()
+
+auth_key = Fernet(dataKey)
+
 
 TIMEOUT = 5  # minutes
 doctor_public_key = None
+doctor_private_key = None
 
 # MIGHT NOT NEED BECAUSE OF SSL
 # def decrypt_message(message):
@@ -46,15 +53,16 @@ def verify_auth(auth):
     cursor.execute(find_user, [hash_id, hash_pw])
     results = cursor.fetchall()
 
-    # if auth matches, return the public key
+    # if auth matches, return the role and public key
+    public_key = auth_key.decrypt(results[3])
     if results:
-        return results[2]
+        return results[2], public_key
     else:
         return False
 
 
-def verify_signature(signature):
-    """Takes in a signed object and compares to values previously sent to client and returns a boolean"""
+# def verify_signature(signature):
+#     """Takes in a signed object and compares to values previously sent to client and returns a boolean"""
 
 
 def receive_message_1(message):
@@ -62,17 +70,18 @@ def receive_message_1(message):
     the user and returns a session key, nonce tuple or boolean if false"""
     json_plaintext = message
     nonce_1 = json_plaintext["nonce"]
-    pub_key = verify_auth(json_plaintext["auth"])
+    role, pub_key = verify_auth(json_plaintext["auth"])
     if pub_key:
-        return pub_key, nonce_1
+        return role, pub_key, nonce_1
     else:
         return False
 
 
-def create_ticket(doctor_id):
+def create_ticket(doctor_id, role):
     """Takes in a doctor id and returns an encrypted json ticket"""
     ticket = {
         "doctor_id": doctor_id,
+        "role": role,
         "timestamp": time.time()
     }
     # NEED TO MAKE SURE USER HAS AUTH SERVER PUBLIC KEY
@@ -80,12 +89,11 @@ def create_ticket(doctor_id):
     return encrypted_ticket
 
 
-def create_message_1(nonce):
+def create_message_1(nonce, timestamp):
     """Takes in a nonce from client's original message and returns a json object
      with a signed nonce 1 and plaintext nonce 2 and timestamp"""
     encrypted_nonce_1 = fernet_nonce.encrypt(nonce)
     nonce_2 = os.urandom(16)
-    timestamp = time.time()
     message = {
         "nonce_1": encrypted_nonce_1,
         "nonce_2": nonce_2,
@@ -101,6 +109,9 @@ def receive_message_2(message):
         "nonce": message["nonce"],
         "timestamp": message["timestamp"]
     }
+    if not verify_timestamp(message["timestamp"]):
+        return None
+
     serialized_json = json.dumps(data_json)
     byte_json = serialized_json.encode()
     match = True
@@ -120,7 +131,31 @@ def receive_message_2(message):
 
 
 def create_message_2(doctor_id):
-    """Takes in a doctor id and combines with timestamp and returns an encrypted ticket"""
+    """Takes in a doctor id and role and combines with timestamp and returns an encrypted ticket"""
     # might change later if useless
-    ticket = create_ticket(doctor_id)
+
+    ticket = create_ticket(doctor_id, role)
     return ticket
+
+
+bytes_in_1 = None
+message_in_1= receive_message_1(bytes_in_1)  #role, pub_key, nonce_1
+doctor_public_key = message_in_1[1]
+
+if message_in_1 is None:
+    #invalid auth
+else:
+    timestamp = time.time()
+    message_out_1 = create_message_1(message_in_1[2])
+    #bytes_out_1
+    #send message
+    #receive message
+    bytes_in_2 = None
+    message_in_2 = receive_message_2(bytes_in_2)
+    if message_in_2 is None:
+        #time expired
+    elif message_in_2 == False:
+        #bad signature
+    else:
+        message_out_2 = create_message_2()
+        #bytes_out_2
