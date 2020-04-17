@@ -13,15 +13,26 @@ with sqlite3.connect("doctor_database.db") as db:
     cursor = db.cursor()
 
 with open("authkey.txt", "rb") as fo:
-    '''Key for encryption/decryption'''
+    # Key for encryption/decryption of auth database
     dataKey = fo.read()
-
 auth_key = Fernet(dataKey)
 
+# Key for encrypting ticket
+ticket_key_file = open("asrskey.txt","r")
+ticket_key = ticket_key_file.read().encode()
+ticket_key_file.close()
+fernet_ticket = Fernet(ticket_key)
+
+with open("priv_key.pem", "rb") as key_file:
+    # Key for signing nonce
+    server_private_key = serialization.load_pem_public_key(
+        key_file.read(),
+        backend=default_backend()
+    )
 
 TIMEOUT = 5  # minutes
 doctor_public_key = None
-doctor_private_key = None
+
 
 # MIGHT NOT NEED BECAUSE OF SSL
 # def decrypt_message(message):
@@ -45,18 +56,21 @@ def verify_auth(auth):
     auth database and return a public key or boolean if false"""
     user_id = auth["user_id"]
     user_pw = auth["user_pw"]
-    # will update with the proper hash function later
-    hash_id = hash(user_id)
-    hash_pw = hash(user_pw)
+    id_hash_func = hashes.Hash(hashes.SHA256(), backend=default_backend())
+    id_hash_func.update(user_id)
+    pw_hash_func = hashes.Hash(hashes.SHA256(), backend=default_backend())
+    pw_hash_func.update(user_pw)
+    hashed_id = id_hash_func.finalize()
+    hashed_pw = pw_hash_func.finalize()
 
     find_user = "SELECT * FROM user WHERE user_id = ? AND user_pw = ?"
-    cursor.execute(find_user, [hash_id, hash_pw])
+    cursor.execute(find_user, [hashed_id, hashed_pw])
     results = cursor.fetchall()
 
     # if auth matches, return the role and public key
     public_key = auth_key.decrypt(results[3])
     if results:
-        return results[2], public_key
+        return user_id, results[2], public_key
     else:
         return False
 
@@ -70,9 +84,9 @@ def receive_message_1(message):
     the user and returns a session key, nonce tuple or boolean if false"""
     json_plaintext = message
     nonce_1 = json_plaintext["nonce"]
-    role, pub_key = verify_auth(json_plaintext["auth"])
-    if pub_key:
-        return role, pub_key, nonce_1
+    verified_auth = verify_auth(json_plaintext["auth"])    # user_id, role, pub_key
+    if verified_auth:
+        return verified_auth[0], verified_auth[1], verified_auth[2], nonce_1
     else:
         return False
 
@@ -92,7 +106,7 @@ def create_ticket(doctor_id, role):
 def create_message_1(nonce, timestamp):
     """Takes in a nonce from client's original message and returns a json object
      with a signed nonce 1 and plaintext nonce 2 and timestamp"""
-    encrypted_nonce_1 = fernet_nonce.encrypt(nonce)
+    encrypted_nonce_1 = server_private_key.encrypt(nonce)
     nonce_2 = os.urandom(16)
     message = {
         "nonce_1": encrypted_nonce_1,
@@ -130,7 +144,7 @@ def receive_message_2(message):
     return match
 
 
-def create_message_2(doctor_id):
+def create_message_2(doctor_id, role):
     """Takes in a doctor id and role and combines with timestamp and returns an encrypted ticket"""
     # might change later if useless
 
@@ -139,7 +153,7 @@ def create_message_2(doctor_id):
 
 
 bytes_in_1 = None
-message_in_1= receive_message_1(bytes_in_1)  #role, pub_key, nonce_1
+message_in_1 = receive_message_1(bytes_in_1)  #user_id, role, pub_key, nonce_1
 doctor_public_key = message_in_1[1]
 
 if message_in_1 is None:
@@ -157,5 +171,5 @@ else:
     elif message_in_2 == False:
         #bad signature
     else:
-        message_out_2 = create_message_2()
+        message_out_2 = create_message_2(message_in_1[0], message_in_1[1])
         #bytes_out_2
