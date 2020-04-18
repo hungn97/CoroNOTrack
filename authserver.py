@@ -1,8 +1,8 @@
 from cryptography.fernet import Fernet
+from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives.asymmetric import padding
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives import serialization
-from cryptography.hazmat.backends import default_backend
 import json
 import sqlite3
 import textwrap
@@ -11,25 +11,28 @@ import time
 import socket
 import ssl
 import pprint
+from pathlib import Path
+
 
 with sqlite3.connect("doctor_database.db") as db:
     cursor = db.cursor()
 
-with open("authkey.txt", "rb") as fo:
+with open("askey.txt", "rb") as fo:
     # Key for encryption/decryption of auth database
     dataKey = fo.read()
 auth_key = Fernet(dataKey)
 
 # Key for encrypting ticket
-ticket_key_file = open("asrskey.txt","r")
+ticket_key_file = open("ticketkey.txt","r")
 ticket_key = ticket_key_file.read().encode()
 ticket_key_file.close()
 fernet_ticket = Fernet(ticket_key)
 
+# Key for signing nonce
 with open("priv_key.pem", "rb") as key_file:
-    # Key for signing nonce
-    server_private_key = serialization.load_pem_public_key(
+    server_private_key = serialization.load_pem_private_key(
         key_file.read(),
+        password=None,
         backend=default_backend()
     )
 
@@ -157,9 +160,12 @@ def create_message_2(doctor_id, role):
 
 
 if __name__ == '__main__':
-
+    print("auth server starting")
     HOST = '127.0.0.1'
     PORT = 1234
+    cwd_path = Path.cwd()
+    certs_path = str(cwd_path) + r"\sslsockets_commit"
+
 
     server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
@@ -167,9 +173,9 @@ if __name__ == '__main__':
     server_socket.listen(10)
 
     client, fromaddr = server_socket.accept()
-    secure_sock = ssl.wrap_socket(client, server_side=True, ca_certs = r".\sslsockets_commit\client.pem",
-                                  certfile=r".\sslsockets_commit\server.pem",
-                                  keyfile=r".\sslsockets_commit\server.key",
+    secure_sock = ssl.wrap_socket(client, server_side=True, ca_certs=(certs_path+r"\client.pem"),
+                                  certfile=(certs_path+r"\server.pem"),
+                                  keyfile=(certs_path+r"\server.key"),
                                   cert_reqs=ssl.CERT_REQUIRED,
                                   ssl_version=ssl.PROTOCOL_TLSv1_2)
     cert = secure_sock.getpeercert()
