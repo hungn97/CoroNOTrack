@@ -8,6 +8,9 @@ import sqlite3
 import textwrap
 import os
 import time
+import socket
+import ssl
+import pprint
 
 with sqlite3.connect("doctor_database.db") as db:
     cursor = db.cursor()
@@ -152,24 +155,64 @@ def create_message_2(doctor_id, role):
     return ticket
 
 
-bytes_in_1 = None
-message_in_1 = receive_message_1(bytes_in_1)  #user_id, role, pub_key, nonce_1
-doctor_public_key = message_in_1[1]
 
-if message_in_1 is None:
-    #invalid auth
-else:
-    timestamp = time.time()
-    message_out_1 = create_message_1(message_in_1[2])
-    #bytes_out_1
-    #send message
-    #receive message
-    bytes_in_2 = None
-    message_in_2 = receive_message_2(bytes_in_2)
-    if message_in_2 is None:
-        #time expired
-    elif message_in_2 == False:
-        #bad signature
-    else:
-        message_out_2 = create_message_2(message_in_1[0], message_in_1[1])
-        #bytes_out_2
+if __name__ == '__main__':
+
+    HOST = '127.0.0.1'
+    PORT = 1234
+
+    server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    server_socket.bind((HOST, PORT))
+    server_socket.listen(10)
+
+    client, fromaddr = server_socket.accept()
+    secure_sock = ssl.wrap_socket(client, server_side=True, ca_certs = r".\sslsockets_commit\client.pem",
+                                  certfile=r".\sslsockets_commit\server.pem",
+                                  keyfile=r".\sslsockets_commit\server.key",
+                                  cert_reqs=ssl.CERT_REQUIRED,
+                                  ssl_version=ssl.PROTOCOL_TLSv1_2)
+    cert = secure_sock.getpeercert()
+    response = 'acknowledge from server'
+
+    try:
+        data_in_1 = secure_sock.read(1024)
+        bytes_in_1 = json.loads(data_in_1.decode())
+        message_in_1 = receive_message_1(bytes_in_1)  # user_id, role, pub_key, nonce_1
+        doctor_public_key = message_in_1[1]
+
+        if message_in_1 is None:
+            # invalid auth
+            message_out_1 = "Invalid Auth"
+            bytes_out_1 = message_out_1.encode()
+            secure_sock.write(bytes_out_1)
+        else:
+            timestamp = time.time()
+            message_out_1 = create_message_1(message_in_1[2], timestamp)
+            bytes_out_1 = json.dumps(message_out_1).encode()
+            secure_sock.write(bytes_out_1)
+            # send message
+
+            # receive message
+            data_in_2 = secure_sock.read(1024)
+            bytes_in_2 = json.loads(data_in_2.decode())
+            message_in_2 = receive_message_2(bytes_in_2)
+            if message_in_2 is None:
+                # time expired
+                message_out_2 = "Timed out"
+                bytes_out_2 = message_out_2.encode()
+                secure_sock.write(bytes_out_2)
+            elif not message_in_2:
+                # bad signature
+                message_out_2 = "Invalid response"
+                bytes_out_2 = message_out_2.encode()
+                secure_sock.write(bytes_out_2)
+            else:
+                # success
+                message_out_2 = create_message_2(message_in_1[0], message_in_1[1])
+                bytes_out_2 = message_out_2.encode()
+                secure_sock.write(bytes_out_2)
+
+    finally:
+        secure_sock.close()
+        server_socket.close()
