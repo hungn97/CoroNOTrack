@@ -32,8 +32,8 @@ def main():
 
     # All the fields that will be include in the auth database
     cursor.execute("""CREATE TABLE IF NOT EXISTS user(
-            userid VARBINARY(300) NOT NULL,    
-            userpw VARBINARY(300) NOT NULL,
+            user_id VARBINARY(300) NOT NULL,    
+            user_pw VARBINARY(300) NOT NULL,
             role VARBINARY(300) NOT NULL,
             dpub VARBINARY(300) NOT NULL
     )""")
@@ -51,7 +51,7 @@ def main():
     params = (User, Password, Role, Dpub)
 
     cursor.execute("""
-    INSERT INTO user(userid,userpw,role,dpub)
+    INSERT INTO user(user_id,user_pw,role,dpub)
     VALUES(?,?,?,?)""", params)
 
     # PATIENT #1: H{12131415}, H{password}, 0, AES{publickey}---------------------
@@ -66,7 +66,7 @@ def main():
     params = (User,Password,Role, Dpub)
 
     cursor.execute("""
-    INSERT INTO user(userid,userpw,role,dpub)
+    INSERT INTO user(user_id,user_pw,role,dpub)
     VALUES(?,?,?,?)""", params)
 
     # DOCTOR #2: H{13141516}, H{password}, 1, AES{publickey}---------------------
@@ -81,7 +81,7 @@ def main():
     params = (User,Password,Role, Dpub)
 
     cursor.execute("""
-    INSERT INTO user(userid,userpw,role,dpub)
+    INSERT INTO user(user_id,user_pw,role,dpub)
     VALUES(?,?,?,?)""", params)
 
     # INSURANCE #1: H{14151617}, H{password}, 2, AES{publickey}---------------------
@@ -96,7 +96,7 @@ def main():
     params = (User,Password,Role, Dpub)
 
     cursor.execute("""
-    INSERT INTO user(userid,userpw,role, dpub)
+    INSERT INTO user(user_id,user_pw,role, dpub)
     VALUES(?,?,?,?)""", params)
 
     db.commit()
