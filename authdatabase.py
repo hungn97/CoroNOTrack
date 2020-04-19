@@ -27,7 +27,7 @@ with open("pub_key.pem", "rb") as key_file:
     )
 
 def main():
-    with sqlite3.connect("doctor_database.db") as db:
+    with sqlite3.connect("user_database.db") as db:
         cursor = db.cursor()
 
     # All the fields that will be include in the auth database
