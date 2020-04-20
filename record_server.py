@@ -18,7 +18,7 @@ ticketts = 'temp'
 #sessionKey = 'temp'                                        #key to decrypt the message AES{pID, Ticket, TS}
 #^no longer needed, ssl should handle it
 
-ticketKey = 'temp'                                          #key to decrypt the ticket
+ticketKey = 'Bwg2o7EMWUtYKYhtVq4eKQ-XBoA9ALKF4RAFjTDoZ5E='                                          #key to decrypt the ticket
 dataKey = 'zDN1HN3taSHSHsvE0kAKRNY55VSTiLT9JEvjjXUfW2o='          #key to decrypt the data from the record server\
 
 record = 'temp'
@@ -41,25 +41,25 @@ aesRecord = 'temp'
 # Main thing to keep note here is we don't touch the ds, just
 # keep on passing it along with the encrypted/decrypted data
 
-def getRecord(pID, Ticket, TS):                          #pID is patient ID, Ticket is ticket from auth, TS is time stamp
-		patientID = pID
-		timestamp = TS
+def getRecord(json_file):                          #pID is patient ID, Ticket is ticket from auth, TS is time stamp
+    data = json.loads(fo.read())
+	patientID = data['patient_id']
+	timestamp = data['ts']
 
-		if verifyTicket(Ticket, TS):                      #if ticket is valid
-			aesRecord = aes.encrypt(record.data)               #encrypt record and signature
-			return aesRecord                                   #send it back
+	if verifyTicket(data['ticket'], timestamp):                      #if ticket is valid
+		dataRequest(patientID)
 
 
 def verifyTicket(Ticket, TS):       
-	if decrypTicket():
-		docID = ticket.docID
-		ticketts = Ticket.timestamp
+	if ticket=tick.decrypt(Ticket.encode("latin1")):
+		docID = ticket['docID']
+		ticketts = ticket['timestamp']
 
 		patientFile = dataRequest(pID)                        #get requested patient data from files
-		record = decrypt(patientFile)                           #decrypt patient file with dataKey
+		record = tick.decrypt(patientFile['record'].encode("latin1"))                           #decrypt patient file with dataKey
 
-		if (timestamp - ticketts) < 1:               #if time between ticket timestamp and when it was sent to record server < 1 min
-			if record.doctorID == docID:                     # if doctor ID matches docID from ticket; i.e., doctor is allowed access
+		if (timestamp - ticketts) < 60:               #if time between ticket timestamp and when it was sent to record server < 1 min
+			if record['UID'] == docID:                     # if doctor ID matches docID from ticket; i.e., doctor is allowed access
 				return true                             #ticket is verified
 			else:
 				print('Doctor ID mismatch')
@@ -70,7 +70,8 @@ def verifyTicket(Ticket, TS):
 
 	else:
 		print("Invalid ticket.")
-		return -1                                #ticket cannot be decrypted, error
+		return -1                                #ticket cannot be decrypted, error   
+
 
 def dataUpload(json_file):
     path = 'Database/Patient Records/'
@@ -90,6 +91,7 @@ def dataUpload(json_file):
                 # os.remove(json_file)
             shutil.move(format_in(json_file, encrypted, data['ds'], data['did'], data['pid'],data['role']), path)
             print('\nMessage: File successfully stored into the database!\n')
+            break
                 
 
 def dataRequest(pID):                                      #open file folder and look for file with pID
@@ -106,7 +108,7 @@ def dataRequest(pID):                                      #open file folder and
                 with open(pID + '.pdf', 'wb') as fo:
                     fo.write(dec)
                 data['ds'] = data['ds'].encode("latin1")
-                
+
                 format_out(pID,dec,data['ds'])
                 
                 print ('\nMessage: File successfully returned!\n')
@@ -150,6 +152,7 @@ def format_in(file_name, enc, ds, did, pid, role):
 # #############################################
 
 enc = Fernet(dataKey)
+tick = Fernet(ticketKey)
 clear = lambda: os.system('clear')
 
 ################################## UPLOAD ####################################
