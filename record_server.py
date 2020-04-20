@@ -13,6 +13,7 @@ import binascii
 
 patientID = "temp"
 docID = 'temp'
+role = 5;
 timestamp = 'temp'
 ticketts = 'temp'
 #sessionKey = 'temp'                                        #key to decrypt the message AES{pID, Ticket, TS}
@@ -43,35 +44,37 @@ aesRecord = 'temp'
 
 def getRecord(json_file):                          #pID is patient ID, Ticket is ticket from auth, TS is time stamp
     data = json.loads(fo.read())
-	patientID = data['patient_id']
-	timestamp = data['ts']
+    patientID = data['patient_id']
+    timestamp = data['ts']
 
-	if verifyTicket(data['ticket'], timestamp):                      #if ticket is valid
-		dataRequest(patientID)
+    if verifyTicket(data['ticket']):                      #if ticket is valid
+        dataRequest(patientID)
 
 
-def verifyTicket(Ticket, TS):       
-	if ticket=tick.decrypt(Ticket.encode("latin1")):
-		docID = ticket['docID']
-		ticketts = ticket['timestamp']
+def verifyTicket(Ticket):  
+    ticket = tick.decrypt(Ticket.encode("latin1"))     
+    docID = ticket['docID']
+    ticketts = ticket['timestamp']
+    role = ticket['role']
 
-		patientFile = dataRequest(pID)                        #get requested patient data from files
-		record = tick.decrypt(patientFile['record'].encode("latin1"))                           #decrypt patient file with dataKey
+    patientFile = dataRequest(pID)                        #get requested patient data from files
+    record = enc.decrypt(patientFile['record'].encode("latin1"))                           #decrypt patient file with dataKey
+    #print(record)
 
-		if (timestamp - ticketts) < 60:               #if time between ticket timestamp and when it was sent to record server < 1 min
-			if record['UID'] == docID:                     # if doctor ID matches docID from ticket; i.e., doctor is allowed access
-				return true                             #ticket is verified
-			else:
-				print('Doctor ID mismatch')
-				return -1
-		else:
-			print('time stamp is wrong')
-			return -1
-
-	else:
-		print("Invalid ticket.")
-		return -1                                #ticket cannot be decrypted, error   
-
+    if (timestamp - ticketts) < 60:               #if time between ticket timestamp and when it was sent to record server < 1 min
+        if record['role'] == role:
+            if record['UID'] == docID:                     # if doctor ID matches docID from ticket; i.e., doctor is allowed access
+                return true                             
+            else:
+                print('Doctor ID mismatch')
+                return -1
+        else:
+            print('Incorrect role')
+            return -1;
+    else:
+        print('time stamp is wrong')
+        return -1
+    
 
 def dataUpload(json_file):
     path = 'Database/Patient Records/'
@@ -104,6 +107,7 @@ def dataRequest(pID):                                      #open file folder and
 
                 data = json.loads(fo.read())
                 dec = enc.decrypt(data['record'].encode("latin1"))
+                print(data['ds'])
                 
                 with open(pID + '.pdf', 'wb') as fo:
                     fo.write(dec)
