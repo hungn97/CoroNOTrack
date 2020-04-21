@@ -8,9 +8,22 @@ import ssl
 from pathlib import Path
 import json
 import os
+import pickle
 import time
 
 
+with open("user_priv_key.pem", "rb") as key_file:
+    user_private_key = serialization.load_pem_private_key(
+        key_file.read(),
+        password=None,
+        backend=default_backend()
+    )
+
+with open("auth_pub_key.pem", "rb") as key_file:
+    auth_public_key = serialization.load_pem_public_key(
+        key_file.read(),
+        backend=default_backend()
+    )
 
 def create_auth_message_1():
     """Takes in a user id and user pw and returns a plaintext json message"""
@@ -25,9 +38,53 @@ def create_auth_message_1():
         "auth": json.dumps(auth),
         "nonce": nonce
     }
-    print(message)
+    #print(message)
     return message
 
+
+def receive_auth_message_1(message):
+    """Takes in the entire message containing the auth server signed nonce 1 and nonce 2
+    and returns nonce 2 if valid"""
+    # print(message["nonce_1"].encode('latin1'))
+    match = message["nonce_2"].encode('latin1')
+    try:
+        auth_public_key.verify(
+            message["signature"].encode('latin1'),
+            message["nonce_1"].encode('latin1'),
+            padding.PSS(
+                mgf=padding.MGF1(hashes.SHA256()),
+                salt_length=padding.PSS.MAX_LENGTH
+            ),
+            hashes.SHA256()
+            )
+    except:
+        match = False
+    return match
+
+
+def create_auth_message_2(nonce_2):
+    if nonce_2 is False:
+        return "bad signature"
+    timestamp = time.time()
+    signature_data = {
+        "nonce": nonce_2.decode('latin1'),
+        "timestamp": timestamp
+    }
+    # print(json.dumps(signature_data))
+    signature = user_private_key.sign(
+        json.dumps(signature_data).encode('latin1'),
+        padding.PSS(
+            mgf=padding.MGF1(hashes.SHA256()),
+            salt_length=padding.PSS.MAX_LENGTH
+            ),
+        hashes.SHA256()
+        )
+    message = {
+        "signature": signature.decode('latin1'),
+        "timestamp": timestamp
+    }
+    # print(signature)
+    return message
 
 # client
 if __name__ == '__main__':
@@ -55,9 +112,24 @@ if __name__ == '__main__':
     # print(cert)
 
     auth_message_out_1 = create_auth_message_1()
-    auth_bytes_out_1 = json.dumps(auth_message_out_1).encode()
+    auth_bytes_out_1 = json.dumps(auth_message_out_1).encode('latin')
+    print("AUTH DATA OUT 1:")
     print(auth_bytes_out_1)
     secure_sock.write(auth_bytes_out_1)
-    print(secure_sock.read(1024))
+
+    auth_data_in_1 = secure_sock.read(2048)
+    print("AUTH DATA IN 1:")
+    print(auth_data_in_1)
+    auth_bytes_in_1 = json.loads(auth_data_in_1)
+    nonce_2 = receive_auth_message_1(auth_bytes_in_1)
+    auth_message_out_2 = create_auth_message_2(nonce_2)
+    auth_bytes_out_2 = json.dumps(auth_message_out_2).encode('latin1')
+    print("AUTH DATA OUT 2:")
+    print(auth_bytes_out_2)
+    secure_sock.write(auth_bytes_out_2)
+
+    ticket = secure_sock.read(2048)
+    print("AUTH DATA IN 2:")
+    print(ticket)
     secure_sock.close()
     sock.close()

@@ -11,13 +11,13 @@ with open("askey.txt", "rb") as fo:
 enc = Fernet(dataKey)
 #clear = lambda: os.system('clear')
 
-with open("pub_key.pem", "rb") as key_file:
+with open("user_pub_key.pem", "rb") as key_file:
     '''This is the binary data of the key, this is only 
     for the sole purpose of AES{DPub}'''
     data = key_file.read().decode('utf-8')
     key = '\n'.join(data.split('\n')[1:-1]).encode('utf-8')
 
-with open("pub_key.pem", "rb") as key_file:
+with open("user_pub_key.pem", "rb") as key_file:
     '''The public key to verify digital signature, we should
     still keep this to utilize the .verify function of the 
     cryptography library'''
@@ -62,6 +62,8 @@ def main():
     Password = pw_hash_func.finalize()
     Role = '0'
     Dpub = enc.encrypt(key)
+
+    print("Password: " + Password.decode('latin1'))
 
     params = (User,Password,Role, Dpub)
 

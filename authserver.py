@@ -11,10 +11,11 @@ import time
 import socket
 import ssl
 import pprint
+import pickle
 from pathlib import Path
 
 
-with sqlite3.connect("doctor_database.db") as db:
+with sqlite3.connect("user_database.db") as db:
     cursor = db.cursor()
 
 with open("askey.txt", "rb") as fo:
@@ -24,20 +25,26 @@ auth_key = Fernet(dataKey)
 
 # Key for encrypting ticket
 ticket_key_file = open("ticketkey.txt","r")
-ticket_key = ticket_key_file.read().encode()
+ticket_key = ticket_key_file.read().encode('latin1')
 ticket_key_file.close()
 fernet_ticket = Fernet(ticket_key)
 
 # Key for signing nonce
-with open("priv_key.pem", "rb") as key_file:
+with open("auth_priv_key.pem", "rb") as key_file:
     server_private_key = serialization.load_pem_private_key(
         key_file.read(),
         password=None,
         backend=default_backend()
     )
 
+with open("user_pub_key.pem", "rb") as key_file:
+    user_public_key = serialization.load_pem_public_key(
+        key_file.read(),
+        backend=default_backend()
+    )
+
 TIMEOUT = 5  # minutes
-user_public_key = None
+# user_public_key = None
 
 
 # MIGHT NOT NEED BECAUSE OF SSL
@@ -63,13 +70,17 @@ def verify_auth(auth):
     user_id = auth["user_id"]
     user_pw = auth["user_pw"]
     pw_hash_func = hashes.Hash(hashes.SHA256(), backend=default_backend())
-    pw_hash_func.update(user_pw.encode())
+    pw_hash_func.update(user_pw.encode('latin1'))
     hashed_pw = pw_hash_func.finalize()
+
+    # print("userid " + user_id)
+    # print(user_pw)
+
     find_user = "SELECT * FROM user WHERE user_id = ? AND user_pw = ?"
     cursor.execute(find_user, [user_id, hashed_pw])
-    results = cursor.fetchall()
-
-    print("results " + str(results))
+    results = cursor.fetchone()
+    # print("results")
+    # print(results[2])
 
     # if auth matches, return the role and public key
     public_key = auth_key.decrypt(results[3])
@@ -86,10 +97,14 @@ def verify_auth(auth):
 def receive_message_1(message):
     """Takes in the entire message after the initial key exchange from
     the user and returns a session key, nonce tuple or boolean if false"""
-    json_plaintext = message
-    nonce_1 = json_plaintext["nonce"]
-    verified_auth = verify_auth(json_plaintext["auth"])    # user_id, role, pub_key
-    print("verified auth" + str(verified_auth))
+    # print("in receive message")
+    # print(message)
+    if message is None:
+        return False
+    nonce_1 = message["nonce"]
+    verified_auth = verify_auth(json.loads(message["auth"]))    # user_id, role, pub_key
+    # print("verified auth")
+    # print(verified_auth)
     if verified_auth:
         return verified_auth[0], verified_auth[1], verified_auth[2], nonce_1
     else:
@@ -103,40 +118,51 @@ def create_ticket(user_id, role):
         "role": role,
         "timestamp": time.time()
     }
-    # NEED TO MAKE SURE USER HAS AUTH SERVER PUBLIC KEY
-    encrypted_ticket = fernet_ticket.encrypt(ticket)
+    # print()
+    # print(ticket)
+    # print()
+    encrypted_ticket = fernet_ticket.encrypt(json.dumps(ticket).encode('latin1'))
     return encrypted_ticket
 
 
-def create_message_1(nonce, timestamp):
+def create_message_1(nonce):
     """Takes in a nonce from client's original message and returns a json object
-     with a signed nonce 1 and plaintext nonce 2 and timestamp"""
-    encrypted_nonce_1 = server_private_key.encrypt(nonce)
-    nonce_2 = os.urandom(16).decode('latin1')
+     with a signed nonce 1 and plaintext nonce 2"""
+    signed_nonce_1 = server_private_key.sign(
+        nonce.encode('latin1'),
+        padding.PSS(
+            mgf=padding.MGF1(hashes.SHA256()),
+            salt_length=padding.PSS.MAX_LENGTH
+            ),
+        hashes.SHA256()
+        )
+    nonce_2 = os.urandom(16) # .decode('latin1')
+    # print(signed_nonce_1.decode('latin1'))
     message = {
-        "nonce_1": encrypted_nonce_1,
-        "nonce_2": nonce_2,
-        "timestamp": timestamp
+        "nonce_1": nonce,
+        "signature": signed_nonce_1.decode('latin1'),
+        "nonce_2": nonce_2.decode('latin1'),
     }
     return message
 
 
-def receive_message_2(message):
+def receive_message_2(message, nonce_2):
     """Takes in the entire message containing the user signed nonce 2 and timestamp and returns a boolean if valid"""
     # fetch users public key from auth database
+    match = 0  # valid
+    # print(nonce_2.encode('latin1'))
     data_json = {
-        "nonce": message["nonce"],
+        "nonce": nonce_2,
         "timestamp": message["timestamp"]
     }
+    # print(message["signature"].encode('latin1'))
     if not verify_timestamp(message["timestamp"]):
-        return None
+        return 1  # time out
 
-    serialized_json = json.dumps(data_json)
-    byte_json = serialized_json.encode()
-    match = True
+    byte_json = json.dumps(data_json).encode('latin1')
     try:
         user_public_key.verify(
-            message["signature"],
+            message["signature"].encode('latin1'),
             byte_json,
             padding.PSS(
                 mgf=padding.MGF1(hashes.SHA256()),
@@ -145,7 +171,8 @@ def receive_message_2(message):
             hashes.SHA256()
             )
     except:
-        match = False
+        # print("INVALID SIG")
+        match = 2  # invalid signature
     return match
 
 
@@ -182,49 +209,51 @@ if __name__ == '__main__':
 
         print("client connected: " + str(fromaddr))
 
-        try:
-            data_in_1 = secure_sock.read(1024)
-            print("data in 1" + data_in_1.decode('latin1'))
-            try:
-                bytes_in_1 = json.loads(data_in_1.decode('latin1'))
-                #print("bytes in 1" + str(bytes_in_1))
-                message_in_1 = receive_message_1(bytes_in_1)  # user_id, role, pub_key, nonce_1
-                #print("message_in_1" + str(message_in_1))
-                user_public_key = message_in_1[1]
-            except:
-                message_in_1 = None
-            if message_in_1 is None:
-                # invalid auth
-                message_out_1 = "Invalid Auth"
-                bytes_out_1 = message_out_1.encode()
-                secure_sock.write(bytes_out_1)
+
+        data_in_1 = secure_sock.read(2048)
+        print("RECEIVED MESSAGE 1:")
+        print(data_in_1.decode('latin1'))
+        bytes_in_1 = json.loads(data_in_1.decode('latin1'))
+        message_in_1 = receive_message_1(bytes_in_1)  # user_id, role, pub_key, nonce_1
+        if not message_in_1:
+            # invalid auth
+            message_out_1 = "Invalid Auth"
+            bytes_out_1 = message_out_1.encode('latin1')
+            secure_sock.write(bytes_out_1)
+        else:
+            # print("SUCCESSFUL AUTH")
+            #####################################
+            # user_public_key = message_in_1[1] # look at later
+            #####################################
+            message_out_1 = create_message_1(message_in_1[3])
+            print("MESSAGE OUT 1:")
+            print(message_out_1)
+            nonce_2 = message_out_1["nonce_2"]
+            bytes_out_1 = json.dumps(message_out_1).encode('latin1')
+            secure_sock.write(bytes_out_1)
+            # receive message
+            data_in_2 = secure_sock.read(2048)
+            print("RECEIVED MESSAGE 2:")
+            print(data_in_2.decode('latin1'))
+            bytes_in_2 = json.loads(data_in_2.decode('latin1'))
+            message_in_2 = receive_message_2(bytes_in_2, nonce_2)
+            if message_in_2 == 1:
+                # time expired
+                message_out_2 = "Timed out"
+                bytes_out_2 = message_out_2.encode('latin1')
+                secure_sock.write(bytes_out_2)
+            elif message_in_2 == 2:
+                # bad signature
+                message_out_2 = "Invalid response"
+                bytes_out_2 = message_out_2.encode('latin1')
+                secure_sock.write(bytes_out_2)
             else:
-                timestamp = time.time()
-                message_out_1 = create_message_1(message_in_1[2], timestamp)
-                bytes_out_1 = json.dumps(message_out_1).encode()
-                secure_sock.write(bytes_out_1)
-                # send message
+                # success
+                message_out_2 = create_message_2(message_in_1[0], message_in_1[1])
+                print("MESSAGE OUT 2:")
+                print(message_out_2)
+                secure_sock.write(message_out_2)
 
-                # receive message
-                data_in_2 = secure_sock.read(1024)
-                bytes_in_2 = json.loads(data_in_2.decode())
-                message_in_2 = receive_message_2(bytes_in_2)
-                if message_in_2 is None:
-                    # time expired
-                    message_out_2 = "Timed out"
-                    bytes_out_2 = message_out_2.encode()
-                    secure_sock.write(bytes_out_2)
-                elif not message_in_2:
-                    # bad signature
-                    message_out_2 = "Invalid response"
-                    bytes_out_2 = message_out_2.encode()
-                    secure_sock.write(bytes_out_2)
-                else:
-                    # success
-                    message_out_2 = create_message_2(message_in_1[0], message_in_1[1])
-                    bytes_out_2 = message_out_2.encode()
-                    secure_sock.write(bytes_out_2)
-
-        finally:
-            secure_sock.close()
-            server_socket.close()
+        # finally:
+        secure_sock.close()
+        server_socket.close()
