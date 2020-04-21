@@ -82,8 +82,12 @@ def dataUpload(json_file):
 
     for i in fileList:
         if os.path.isfile(os.path.join(path,json_file)):
-            print('\nError: Patient file is already in the system!\n')
-            return -1
+            ask = int(input('\nPatient file is already in the system! Would you like to update? 1 for Yes, 2 for No\n'))
+            if ask == 1:
+                os.remove(os.path.join(path,json_file))
+                dataUpload(json_file)
+            else:
+                return -1
         else:
             with open(json_file) as fo:
                 data = json.loads(fo.read())
