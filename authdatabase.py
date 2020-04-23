@@ -4,7 +4,7 @@ from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives import serialization
 import sqlite3
 
-with open("authkey.txt", "rb") as fo:
+with open("askey.txt", "rb") as fo:
     '''Key for encryption/decryption'''
     dataKey = fo.read()
 
