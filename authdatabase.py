@@ -4,27 +4,27 @@ from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives import serialization
 import sqlite3
 
-with open("askey.txt", "rb") as fo:
+with open("authkey.txt", "rb") as fo:
     '''Key for encryption/decryption'''
     dataKey = fo.read()
 
 enc = Fernet(dataKey)
 #clear = lambda: os.system('clear')
 
-with open("user_pub_key.pem", "rb") as key_file:
+with open("pub_key.pem", "rb") as key_file:
     '''This is the binary data of the key, this is only 
     for the sole purpose of AES{DPub}'''
     data = key_file.read().decode('utf-8')
-    key = '\n'.join(data.split('\n')[1:-1]).encode('utf-8')
+    key = ''.join(map(str,data)).encode('utf-8')
 
-with open("user_pub_key.pem", "rb") as key_file:
-    '''The public key to verify digital signature, we should
-    still keep this to utilize the .verify function of the 
-    cryptography library'''
-    public_key = serialization.load_pem_public_key(
-        key_file.read(),
-        backend=default_backend()
-    )
+# with open("pub_key.pem", "rb") as key_file:
+#     '''The public key to verify digital signature, we should
+#     still keep this to utilize the .verify function of the 
+#     cryptography library'''
+#     public_key = serialization.load_pem_public_key(
+#         key_file.read(),
+#         backend=default_backend()
+#     )
 
 def main():
     with sqlite3.connect("user_database.db") as db:
@@ -37,19 +37,19 @@ def main():
             role VARBINARY(300) NOT NULL,
             dpub VARBINARY(300) NOT NULL
     )""")
-    ''' FORMAT : H{userid}, H{userpw}, role, AES{DPub}'''
+    ''' FORMAT : userid, H{userpw}, role, AES{DPub}'''
 
-    # DOCTOR #1: H{30096073}, H{password}, 1, AES{publickey}---------------------
+    # DOCTOR #1: 30096073, H{password}, 1, AES{publickey}---------------------
     User = '30096073'
+
     Prehash_Password = 'password'
     pw_hash_func = hashes.Hash(hashes.SHA256(), backend=default_backend())
     pw_hash_func.update(Prehash_Password.encode())
     Password = pw_hash_func.finalize()
+
     Role = '1'
     Dpub = enc.encrypt(key)
-
     params = (User, Password, Role, Dpub)
-
     cursor.execute("""
     INSERT INTO user(user_id,user_pw,role,dpub)
     VALUES(?,?,?,?)""", params)
@@ -62,8 +62,6 @@ def main():
     Password = pw_hash_func.finalize()
     Role = '0'
     Dpub = enc.encrypt(key)
-
-    print("Password: " + Password.decode('latin1'))
 
     params = (User,Password,Role, Dpub)
 
@@ -94,7 +92,7 @@ def main():
     Password = pw_hash_func.finalize()
     Role = '2'
     Dpub = enc.encrypt(key)
-
+    
     params = (User,Password,Role, Dpub)
 
     cursor.execute("""
@@ -104,7 +102,7 @@ def main():
     db.commit()
 
     cursor.execute("SELECT * FROM user")
-    print(cursor.fetchall())
+    #print(cursor.fetchall())
 
 if __name__ == "__main__": 
     main()
