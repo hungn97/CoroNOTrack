@@ -4,19 +4,23 @@ from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives import serialization
 import sqlite3
 
-with open("authkey.txt", "rb") as fo:
+with open("askey.txt", "rb") as fo:
     '''Key for encryption/decryption'''
     dataKey = fo.read()
 
 enc = Fernet(dataKey)
 #clear = lambda: os.system('clear')
 
-with open("pub_key.pem", "rb") as key_file:
-    '''This is the binary data of the key, this is only 
+# with open("pub_key.pem", "rb") as key_file:
+#     '''This is the binary data of the key, this is only
+#     for the sole purpose of AES{DPub}'''
+#     data = key_file.read().decode('latin1')
+#     key = ''.join(map(str,data)).encode('latin1')
+with open("user_pub_key.pem", "rb") as key_file:
+    '''This is the binary data of the key, this is only
     for the sole purpose of AES{DPub}'''
-    data = key_file.read().decode('utf-8')
-    key = ''.join(map(str,data)).encode('utf-8')
-
+    key = key_file.read()
+    print(key)
 # with open("pub_key.pem", "rb") as key_file:
 #     '''The public key to verify digital signature, we should
 #     still keep this to utilize the .verify function of the 
@@ -92,7 +96,8 @@ def main():
     Password = pw_hash_func.finalize()
     Role = '2'
     Dpub = enc.encrypt(key)
-    
+    print(Dpub)
+    print(enc.decrypt(Dpub))
     params = (User,Password,Role, Dpub)
 
     cursor.execute("""
@@ -102,6 +107,8 @@ def main():
     db.commit()
 
     cursor.execute("SELECT * FROM user")
+    user = cursor.fetchone()
+    print(user)
     #print(cursor.fetchall())
 
 if __name__ == "__main__": 

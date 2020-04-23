@@ -37,14 +37,14 @@ with open("auth_priv_key.pem", "rb") as key_file:
         backend=default_backend()
     )
 
-with open("user_pub_key.pem", "rb") as key_file:
-    user_public_key = serialization.load_pem_public_key(
-        key_file.read(),
-        backend=default_backend()
-    )
+# with open("user_pub_key.pem", "rb") as key_file:
+#     user_public_key = serialization.load_pem_public_key(
+#         key_file.read(),
+#         default_backend()
+#     )
 
 TIMEOUT = 5  # minutes
-# user_public_key = None
+user_public_key = None
 
 
 # MIGHT NOT NEED BECAUSE OF SSL
@@ -79,11 +79,13 @@ def verify_auth(auth):
     find_user = "SELECT * FROM user WHERE user_id = ? AND user_pw = ?"
     cursor.execute(find_user, [user_id, hashed_pw])
     results = cursor.fetchone()
-    # print("results")
-    # print(results[2])
+    print("results")
+    print(results[3])
 
     # if auth matches, return the role and public key
+
     public_key = auth_key.decrypt(results[3])
+    print(public_key)
     if results:
         return user_id, results[2], public_key
     else:
@@ -222,8 +224,14 @@ if __name__ == '__main__':
             secure_sock.write(bytes_out_1)
         else:
             # print("SUCCESSFUL AUTH")
+            # print(message_in_1[2])
             #####################################
-            # user_public_key = message_in_1[1] # look at later
+            user_public_key = serialization.load_pem_public_key(
+                message_in_1[2],
+                backend=default_backend()
+            )
+            # print("NEW KEY")
+            # print(message_in_1[2])
             #####################################
             message_out_1 = create_message_1(message_in_1[3])
             print("MESSAGE OUT 1:")
