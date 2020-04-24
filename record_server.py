@@ -10,9 +10,16 @@ import json
 import shutil
 import hashlib
 import binascii
+import textwrap
+import time
+import socket
+import ssl
+import pprint
+import pickle
+from pathlib import Path
 
 patientID = "temp"
-docID = 'temp'
+userID = 'temp'
 role = 5;
 timestamp = 'temp'
 ticketts = 'temp'
@@ -42,37 +49,49 @@ aesRecord = 'temp'
 # Main thing to keep note here is we don't touch the ds, just
 # keep on passing it along with the encrypted/decrypted data
 
-def getRecord(json_file):                          #pID is patient ID, Ticket is ticket from auth, TS is time stamp
-    data = json.loads(fo.read())
+def getRecord(requested_data):                          #pID is patient ID, Ticket is ticket from auth, TS is time stamp
+    data = json.loads(requested_data.decode('latin1'))        #convert from bytes to string, then load json into data
     patientID = data['patient_id']
     timestamp = data['ts']
+    print(patientID)
+    print(timestamp)
 
     if verifyTicket(data['ticket']):                      #if ticket is valid
-        dataRequest(patientID)
+        print("Ticket verified")
+        #dataRequest(patientID)
 
 
 def verifyTicket(Ticket):  
-    ticket = tick.decrypt(Ticket.encode("latin1"))     
-    docID = ticket['docID']
-    ticketts = ticket['timestamp']
-    role = ticket['role']
+    ticket = tick.decrypt(Ticket.encode('latin1'))
+    ticket = json.loads(ticket)
+    #ticket = ticket.decode('latin1')
 
-    patientFile = dataRequest(pID)                        #get requested patient data from files
+    userID = ticket["user_id"]
+    ticketts = ticket["timestamp"]
+    role = ticket["role"]
+
+    print('Printing ticket information')
+    print(userID)
+    print(ticketts)
+    print(role)
+
+    if (timestamp - ticketts) < 60:
+        print('Timestamp mismatch')
+        return False
+
+    print('Timestamp is within acceptable range')
+
+    patientFile = dataRequest(patientID)                        #get requested patient data from files
     record = enc.decrypt(patientFile['record'].encode("latin1"))                           #decrypt patient file with dataKey
-    #print(record)
 
-    if (timestamp - ticketts) < 60:               #if time between ticket timestamp and when it was sent to record server < 1 min
-        if record['role'] == role:
-            if record['UID'] == docID:                     # if doctor ID matches docID from ticket; i.e., doctor is allowed access
-                return true                             
-            else:
+    if record['role'] == role:
+        if record['did'] == userID:                     # if doctor ID matches docID from ticket; i.e., doctor is allowed access
+            return True                             
+        else:
                 print('Doctor ID mismatch')
                 return -1
-        else:
-            print('Incorrect role')
-            return -1;
     else:
-        print('time stamp is wrong')
+        print('Incorrect role')
         return -1
     
 
@@ -163,16 +182,50 @@ enc = Fernet(dataKey)
 tick = Fernet(ticketKey)
 clear = lambda: os.system('clear')
 
-################################## UPLOAD ####################################
-while True:
-    #clear()
-    choice = int(input("- Press '1' to UPLOAD a record.\n- Press '2' to RETRIEVE a record.\n- Press '3' to exit.\n"))
+if __name__ == '__main__':
+    print("record server starting")
+    HOST = '127.0.0.1'
+    PORT = 1235
+    cwd_path = Path.cwd()
+    certs_path = str(cwd_path) + r"\sslsockets_commit"
 
-    if choice == 1:
-        dataUpload(str(input("Enter name of file to upload: ")))
-    elif choice == 2:
-        dataRequest(str(input("Enter patientID: ")))
-    elif choice == 3:
-        exit()
-    else:
-        print("Please select a valid option!")
+    while True:
+        server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        server_socket.bind((HOST, PORT))
+        server_socket.listen(10)
+
+        client, fromaddr = server_socket.accept()
+        secure_sock = ssl.wrap_socket(client, server_side=True, ca_certs=(certs_path+r"\client.pem"),
+                                      certfile=(certs_path+r"\server.pem"),
+                                      keyfile=(certs_path+r"\server.key"),
+                                      cert_reqs=ssl.CERT_REQUIRED,
+                                      ssl_version=ssl.PROTOCOL_TLSv1_2)
+        cert = secure_sock.getpeercert()
+        response = 'acknowledge from server'
+
+        print("client connected: " + str(fromaddr))
+
+
+        req_data = secure_sock.read(2048)
+        print("RECEIVED REQUESTED DATA INFO:")
+        getRecord(req_data)
+
+        secure_sock.close()
+        server_socket.close()
+#sys.exit(0)
+
+
+# ################################## UPLOAD ####################################
+# while True:
+#     #clear()
+#     choice = int(input("- Press '1' to UPLOAD a record.\n- Press '2' to RETRIEVE a record.\n- Press '3' to exit.\n"))
+
+#     if choice == 1:
+#         dataUpload(str(input("Enter name of file to upload: ")))
+#     elif choice == 2:
+#         dataRequest(str(input("Enter patientID: ")))
+#     elif choice == 3:
+#         exit()
+#     else:
+#         print("Please select a valid option!")

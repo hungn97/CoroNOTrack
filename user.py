@@ -86,6 +86,24 @@ def create_auth_message_2(nonce_2):
     # print(signature)
     return message
 
+def create_record_request(enc_ticket):
+    req_pid = input('Enter Requested Patients ID\n>')
+    timestamp = time.time()                         #get time for timestamp
+
+    id_hash_func = hashes.Hash(hashes.SHA256(), backend=default_backend())    #hash the patient id
+    id_hash_func.update(req_pid.encode('latin1'))
+    hashed_id = id_hash_func.finalize()
+
+    request_data = {
+        "patient_id":hashed_id.decode('latin1'),
+        "ticket": enc_ticket.decode('latin1'),
+        "ts": timestamp
+    }
+
+    message = json.dumps(request_data).encode('latin1')
+
+    return message
+
 # client
 if __name__ == '__main__':
 
@@ -111,7 +129,7 @@ if __name__ == '__main__':
     cert = secure_sock.getpeercert()
     # print(cert)
 
-    auth_message_out_1 = create_auth_message_1()
+    auth_message_out_1 = create_auth_message_1()                         #ask for user id and password
     auth_bytes_out_1 = json.dumps(auth_message_out_1).encode('latin')
     print("AUTH DATA OUT 1:")
     print(auth_bytes_out_1)
@@ -131,5 +149,35 @@ if __name__ == '__main__':
     ticket = secure_sock.read(2048)
     print("AUTH DATA IN 2:")
     print(ticket)
-    secure_sock.close()
-    sock.close()
+
+    secure_sock.close() 
+    sock.close()                              #close socket to auth server, open one to record server
+    print("CONNECTION TO AUTH SERVER CLOSED")
+
+    HOST = '127.0.0.1'
+    PORT = 1235
+    cwd_path = Path.cwd()
+    certs_path = str(cwd_path) + r"\sslsockets_commit"
+
+    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    sock.setblocking(1);
+    sock.connect((HOST, PORT))
+
+    context = ssl.SSLContext(ssl.PROTOCOL_TLSv1_2)
+    context.verify_mode = ssl.CERT_REQUIRED
+    context.load_verify_locations(certs_path+r'\server.pem')
+    context.load_cert_chain(certfile=certs_path+r"\client.pem", keyfile=certs_path+r"\client.key")
+
+    if ssl.HAS_SNI:
+        secure_sock = context.wrap_socket(sock, server_side=False, server_hostname=HOST)
+    else:
+        secure_sock = context.wrap_socket(sock, server_side=False)
+
+    cert = secure_sock.getpeercert()
+
+    request = create_record_request(ticket);                    #create a record request using ticket from auth server
+    secure_sock.write(request)
+
+    requested_record = secure_sock.read(2048)
+    #print('Requested record returned successfully')
+#sys.exit(0)
