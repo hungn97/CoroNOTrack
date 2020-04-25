@@ -181,5 +181,7 @@ if __name__ == '__main__':
     secure_sock.write(request)
 
     requested_record = secure_sock.read(2048)
+    with open('record' + '.pdf', 'wb') as fo:
+           fo.write(base64.b64decode(requested_record['record']))
     #print('Requested record returned successfully')
 #sys.exit(0)
