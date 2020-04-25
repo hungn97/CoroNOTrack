@@ -53,7 +53,7 @@ aesRecord = 'temp'
 
 def getRecord(requested_data):                          #pID is patient ID, Ticket is ticket from auth, TS is time stamp
     data = json.loads(requested_data.decode('latin1'))        #convert from bytes to string, then load json into data
-    patientID = data['patient_id']
+    patientID = data['patient_id'].encode('latin1')
     timestamp = data['ts']
     print(patientID)
     print(timestamp)
@@ -86,9 +86,9 @@ def verifyTicket(Ticket, timestamp, patientID):
 
     print('Timestamp is within acceptable range')
 
-    print(patientID)
+    print(type(patientID))
     patientFile = dataRequest(patientID)                        #get requested patient data from files
-    record = enc.decrypt(patientFile['record'].encode("latin1"))                           #decrypt patient file with dataKey
+    # record = enc.decrypt(patientFile['record'].encode("latin1"))                           #decrypt patient file with dataKey
 
     return True
     
@@ -99,8 +99,7 @@ def dataUpload(json_file):
     format_in(data)
                 
 
-def dataRequest(hpid):       
-
+def dataRequest(hpid):
     ######## TEST ##########
     # pid_hash_func = hashes.Hash(hashes.SHA256(), backend=default_backend())
     # pid_hash_func.update(hpid.encode('utf-8'))
@@ -113,13 +112,17 @@ def dataRequest(hpid):
     find_user = "SELECT * FROM user WHERE pid = ?"
     cursor.execute(find_user, [hpid])
     results = cursor.fetchone()
-    
+    print("RESULTS")
+    print(results)
     if results:
         dec = enc.decrypt(results[3])
 #         with open('result' + '.pdf', 'wb') as fo:
-#             fo.write(base64.b64decode(dec)) 
+#             fo.write(base64.b64decode(dec))
+        #########################################################################################################
+        # type problem here, sending out a json when it should be bytes object
         r_record = format_out('result',dec,results[4])
         return r_record
+        ########################################################################################################
     else:
         print('\nError: Patient file does not exist!\n')
         return -1
@@ -180,11 +183,13 @@ if __name__ == '__main__':
     # id_hash_func = hashes.Hash(hashes.SHA256(), backend=default_backend())    #hash the patient id
     # id_hash_func.update(req_pid.encode('utf-8'))
     # hashed_id = id_hash_func.finalize()
+    # print(hashed_id)
+    # print(type(hashed_id))
     # patientFile = dataRequest(hashed_id)
     # #print(patientFile)
     # #patientFile = json.loads(patientFile)
     # #record = enc.decrypt(patientFile['record'].encode("latin1"))
-    # print(patientFile['record'])
+    # print(patientFile)
 
 
 
