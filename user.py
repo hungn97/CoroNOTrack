@@ -29,9 +29,12 @@ def create_auth_message_1():
     """Takes in a user id and user pw and returns a plaintext json message"""
     user_id = input('Enter User ID\n>')
     user_pw = input('Enter User PW\n>')
+    pw_hash_func = hashes.Hash(hashes.SHA256(), backend=default_backend())
+    pw_hash_func.update(user_pw.encode('latin1'))
+    hashed_pw = pw_hash_func.finalize()
     auth = {
         "user_id": user_id,
-        "user_pw": user_pw
+        "user_pw": hashed_pw.decode('latin1')
     }
     nonce = os.urandom(16).decode('latin1')
     message = {
@@ -153,7 +156,6 @@ if __name__ == '__main__':
     secure_sock.close() 
     sock.close()                              #close socket to auth server, open one to record server
     print("CONNECTION TO AUTH SERVER CLOSED")
-
     HOST = '127.0.0.1'
     PORT = 1235
     cwd_path = Path.cwd()

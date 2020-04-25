@@ -28,7 +28,11 @@ ticketts = 'temp'
 #sessionKey = 'temp'                                        #key to decrypt the message AES{pID, Ticket, TS}
 #^no longer needed, ssl should handle it
 
-ticketKey = 'Bwg2o7EMWUtYKYhtVq4eKQ-XBoA9ALKF4RAFjTDoZ5E='                                          #key to decrypt the ticket
+with open("ticketkey.txt","r") as ticket_key_file:
+    ticket_key = ticket_key_file.read().encode('latin1')
+tick = Fernet(ticket_key)
+
+# ticketKey = 'Bwg2o7EMWUtYKYhtVq4eKQ-XBoA9ALKF4RAFjTDoZ5E='                                          #key to decrypt the ticket
 dataKey = 'zDN1HN3taSHSHsvE0kAKRNY55VSTiLT9JEvjjXUfW2o='          #key to decrypt the data from the record server\
 
 record = 'temp'
@@ -178,7 +182,7 @@ def format_in(data):
 # #############################################
 
 enc = Fernet(dataKey)
-tick = Fernet(ticketKey)
+# tick = Fernet(ticketKey)
 clear = lambda: os.system('clear')
 
 if __name__ == '__main__':

@@ -24,9 +24,8 @@ with open("askey.txt", "rb") as fo:
 auth_key = Fernet(dataKey)
 
 # Key for encrypting ticket
-ticket_key_file = open("ticketkey.txt","r")
-ticket_key = ticket_key_file.read().encode('latin1')
-ticket_key_file.close()
+with open("ticketkey.txt","r") as ticket_key_file:
+    ticket_key = ticket_key_file.read().encode('latin1')
 fernet_ticket = Fernet(ticket_key)
 
 # Key for signing nonce
@@ -43,7 +42,7 @@ with open("auth_priv_key.pem", "rb") as key_file:
 #         default_backend()
 #     )
 
-TIMEOUT = 5  # minutes
+TIMEOUT = 3600  # seconds
 user_public_key = None
 
 
@@ -68,16 +67,16 @@ def verify_auth(auth):
     """Takes in a json containing user id and password, hash them, compare hash to
     auth database and return a public key or boolean if false"""
     user_id = auth["user_id"]
-    user_pw = auth["user_pw"]
-    pw_hash_func = hashes.Hash(hashes.SHA256(), backend=default_backend())
-    pw_hash_func.update(user_pw.encode('latin1'))
-    hashed_pw = pw_hash_func.finalize()
+    user_pw = auth["user_pw"].encode('latin1')
+    # pw_hash_func = hashes.Hash(hashes.SHA256(), backend=default_backend())
+    # pw_hash_func.update(user_pw.encode('latin1'))
+    # hashed_pw = pw_hash_func.finalize()
 
     # print("userid " + user_id)
     # print(user_pw)
 
     find_user = "SELECT * FROM user WHERE user_id = ? AND user_pw = ?"
-    cursor.execute(find_user, [user_id, hashed_pw])
+    cursor.execute(find_user, [user_id, user_pw])
     results = cursor.fetchone()
     print("results")
     print(results[3])
