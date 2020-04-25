@@ -107,9 +107,9 @@ def create_record_request(enc_ticket):
 
     return message
 
+
 # client
 if __name__ == '__main__':
-
     HOST = '127.0.0.1'
     PORT = 1234
     cwd_path = Path.cwd()
@@ -180,6 +180,12 @@ if __name__ == '__main__':
     request = create_record_request(ticket);                    #create a record request using ticket from auth server
     secure_sock.write(request)
 
-    requested_record = secure_sock.read(2048)
+    requested_record = secure_sock.read(52000)
+    print('--------------------------')
+    print('Here is the requested record:')
+    print(requested_record)
+
+    #if verifyRecordSignature():
+
     #print('Requested record returned successfully')
-#sys.exit(0)
+    sys.exit(0)

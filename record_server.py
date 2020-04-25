@@ -20,23 +20,14 @@ import sqlite3
 import base64
 from pathlib import Path
 
-#patientID = "temp"
-userID = 'temp'
-role = 5;
-#timestamp = 'temp'
-ticketts = 'temp'
-#sessionKey = 'temp'                                        #key to decrypt the message AES{pID, Ticket, TS}
-#^no longer needed, ssl should handle it
 
-with open("ticketkey.txt","r") as ticket_key_file:
+with open("ticketkey.txt","r") as ticket_key_file:                                 #read ticket key from file
     ticket_key = ticket_key_file.read().encode('latin1')
 tick = Fernet(ticket_key)
 
-# ticketKey = 'Bwg2o7EMWUtYKYhtVq4eKQ-XBoA9ALKF4RAFjTDoZ5E='                                          #key to decrypt the ticket
-dataKey = 'zDN1HN3taSHSHsvE0kAKRNY55VSTiLT9JEvjjXUfW2o='          #key to decrypt the data from the record server\
-
-record = 'temp'
-aesRecord = 'temp'
+with open("rskey.txt","r") as record_key_file:                                   #read record key from file
+    record_key = record_key_file.read().encode('latin1')
+enc = Fernet(record_key)
 
 # Idea here is once the Json gets here, we look inside
 # 
@@ -64,7 +55,9 @@ def getRecord(requested_data):                          #pID is patient ID, Tick
 
     if verifyTicket(data['ticket'], timestamp, patientID):                      #if ticket is valid
         print("Ticket verified")
+        print(dataRequest(patientID))
         secure_sock.write(dataRequest(patientID))
+        sys.exit(0)
     else:
         print("Ticket could not be verified")
         sys.exit(0)
@@ -181,8 +174,6 @@ def format_in(data):
 # ds = data["ds"])
 # #############################################
 
-enc = Fernet(dataKey)
-# tick = Fernet(ticketKey)
 clear = lambda: os.system('clear')
 
 if __name__ == '__main__':
