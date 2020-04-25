@@ -120,8 +120,8 @@ def dataRequest(hpid):
     
     if results:
         dec = enc.decrypt(results[3])
-        with open('result' + '.pdf', 'wb') as fo:
-            fo.write(base64.b64decode(dec)) 
+#         with open('result' + '.pdf', 'wb') as fo:
+#             fo.write(base64.b64decode(dec)) 
         format_out('result',dec,results[4])
     else:
         print('\nError: Patient file does not exist!\n')
