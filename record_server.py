@@ -120,8 +120,12 @@ def dataRequest(hpid):
 #             fo.write(base64.b64decode(dec))
         #########################################################################################################
         # type problem here, sending out a json when it should be bytes object
-        r_record = format_out('result',dec,results[4])
-        return r_record
+        r_record = {
+            "record": dec.decode('latin1'),
+            "signature": results[4].decode('latin1')
+        }
+        print(r_record)
+        return json.dumps(r_record).encode('latin1')
         ########################################################################################################
     else:
         print('\nError: Patient file does not exist!\n')
