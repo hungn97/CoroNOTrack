@@ -16,6 +16,8 @@ import socket
 import ssl
 import pprint
 import pickle
+import sqlite3
+import base64
 from pathlib import Path
 
 patientID = "temp"
@@ -96,81 +98,73 @@ def verifyTicket(Ticket):
     
 
 def dataUpload(json_file):
-    path = 'Database/Patient Records/'
-    fileList = os.listdir(path)
-
-    for i in fileList:
-        if os.path.isfile(os.path.join(path,json_file)):
-            ask = int(input('\nPatient file is already in the system! Would you like to update? 1 for Yes, 2 for No\n'))
-            if ask == 1:
-                os.remove(os.path.join(path,json_file))
-                dataUpload(json_file)
-            else:
-                return -1
-        else:
-            with open(json_file) as fo:
-                data = json.loads(fo.read())
-
-                encrypted = enc.encrypt(data['record'].encode("latin1"))
-
-                data['ds'] = data['ds'].encode("latin1")          
-                # os.remove(json_file)
-            shutil.move(format_in(json_file, encrypted, data['ds'], data['did'], data['pid'],data['role']), path)
-            print('\nMessage: File successfully stored into the database!\n')
-            break
+    with open(json_file, 'rb') as fo:
+        data = json.loads(fo.read())
+    format_in(data)
                 
 
-def dataRequest(pID):                                      #open file folder and look for file with pID
-    path = 'Database/Patient Records/'
-    fileList = os.listdir(path)
+def dataRequest(hpid):       
 
-    for i in fileList:
-        if os.path.isfile(os.path.join(path,pID + '.json')):
-            with open(os.path.join(path,pID + '.json')) as fo:
-
-                data = json.loads(fo.read())
-                dec = enc.decrypt(data['record'].encode("latin1"))
-                print(data['ds'])
-                
-                with open(pID + '.pdf', 'wb') as fo:
-                    fo.write(dec)
-                data['ds'] = data['ds'].encode("latin1")
-
-                format_out(pID,dec,data['ds'])
-                
-                print ('\nMessage: File successfully returned!\n')
-                break
-        else:
-            print('\nError: Patient file does not exist!\n')
-            return -1
-
-def format_out(name, enc, ds): 
+    ######## TEST ##########
+    # pid_hash_func = hashes.Hash(hashes.SHA256(), backend=default_backend())
+    # pid_hash_func.update(hpid.encode('utf-8'))
+    # hpid2 = pid_hash_func.finalize()
+    ########################
+          
+    with sqlite3.connect("patient_database.db") as db:
+        cursor = db.cursor()
+    
+    find_user = "SELECT * FROM user WHERE pid = ?"
+    cursor.execute(find_user, [hpid])
+    results = cursor.fetchone()
+    
+    if results:
+        dec = enc.decrypt(results[3])
+        with open('result' + '.pdf', 'wb') as fo:
+            fo.write(base64.b64decode(dec)) 
+        format_out('result',dec,results[4])
+    else:
+        print('\nError: Patient file does not exist!\n')
+        return -1
+    
+def format_out(name, record, ds): 
 # Format to go out of record server
+
     data = {
-        "record": enc.decode("latin1"),
-        "ds": ds.decode("latin1") 
+        "record": record.decode("latin1"),
+        "ds": ds.decode("latin1")
         }
     
     with open(name +'.json', 'w') as fo:
         json.dump(data,fo)
-        
-    return name + '.json'
+    
+    return (name + '.json')
 
-def format_in(file_name, enc, ds, did, pid, role):
+def format_in(data):
 # Format to store into database
-    
-    data = {
-        "did": did,
-        "pid": pid,
-        "role": role,
-        "record": enc.decode('latin1'),
-        "ds": ds.decode('latin1')
-    }
-    
-    with open(file_name, 'w') as fo:
-        json.dump(data,fo)
-        
-    return file_name
+    with sqlite3.connect("patient_database.db") as db:
+        cursor = db.cursor()
+
+    aesdata = enc.encrypt(data['record'].encode('latin1'))
+
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS user(
+        userid VARBINARY(300) NOT NULL,
+        pid VARBINARY(300) NOT NULL,
+        role VARBINARY(300) NOT NULL,
+        aesdata VARBINARY(300) NOT NULL,
+        ds VARBINARY(300) NOT NULL);
+        """)
+    ''' FORMAT : userid, H{pid}, role, AES{data}, ds'''
+
+    params = (data['uid'],data['pid'].encode('latin1'),data['role'],aesdata,data['ds'].encode('latin1'))
+
+    cursor.execute("""
+        INSERT INTO user(userid, pid, role, aesdata, ds)
+        VALUES(?,?,?,?,?)""", params)
+    db.commit()
+
+    cursor.execute("SELECT * FROM user")
 
 # ############# Receive Message ###############
 # data = message
