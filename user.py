@@ -180,7 +180,6 @@ if __name__ == '__main__':
     request = create_record_request(ticket);                    #create a record request using ticket from auth server
     secure_sock.write(request)
 
-<<<<<<< HEAD
     requested_record = secure_sock.read(52000)
     print('--------------------------')
     print('Here is the requested record:')
@@ -188,10 +187,9 @@ if __name__ == '__main__':
 
     #if verifyRecordSignature():
 
-=======
     requested_record = secure_sock.read(2048)
     with open('record' + '.pdf', 'wb') as fo:
            fo.write(base64.b64decode(requested_record['record']))
->>>>>>> 5383b85ef177c0fe2677ba11980cf330caa51486
+
     #print('Requested record returned successfully')
     sys.exit(0)
