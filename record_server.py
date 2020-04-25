@@ -10,11 +10,20 @@ import json
 import shutil
 import hashlib
 import binascii
+import textwrap
+import time
+import socket
+import ssl
+import pprint
+import pickle
+import sqlite3
+import base64
+from pathlib import Path
 
-patientID = "temp"
-docID = 'temp'
+#patientID = "temp"
+userID = 'temp'
 role = 5;
-timestamp = 'temp'
+#timestamp = 'temp'
 ticketts = 'temp'
 #sessionKey = 'temp'                                        #key to decrypt the message AES{pID, Ticket, TS}
 #^no longer needed, ssl should handle it
@@ -42,116 +51,118 @@ aesRecord = 'temp'
 # Main thing to keep note here is we don't touch the ds, just
 # keep on passing it along with the encrypted/decrypted data
 
-def getRecord(json_file):                          #pID is patient ID, Ticket is ticket from auth, TS is time stamp
-    data = json.loads(fo.read())
+def getRecord(requested_data):                          #pID is patient ID, Ticket is ticket from auth, TS is time stamp
+    data = json.loads(requested_data.decode('latin1'))        #convert from bytes to string, then load json into data
     patientID = data['patient_id']
     timestamp = data['ts']
+    print(patientID)
+    print(timestamp)
 
-    if verifyTicket(data['ticket']):                      #if ticket is valid
-        dataRequest(patientID)
-
-
-def verifyTicket(Ticket):  
-    ticket = tick.decrypt(Ticket.encode("latin1"))     
-    docID = ticket['docID']
-    ticketts = ticket['timestamp']
-    role = ticket['role']
-
-    patientFile = dataRequest(pID)                        #get requested patient data from files
-    record = enc.decrypt(patientFile['record'].encode("latin1"))                           #decrypt patient file with dataKey
-    #print(record)
-
-    if (timestamp - ticketts) < 60:               #if time between ticket timestamp and when it was sent to record server < 1 min
-        if record['role'] == role:
-            if record['UID'] == docID:                     # if doctor ID matches docID from ticket; i.e., doctor is allowed access
-                return true                             
-            else:
-                print('Doctor ID mismatch')
-                return -1
-        else:
-            print('Incorrect role')
-            return -1;
+    if verifyTicket(data['ticket'], timestamp, patientID):                      #if ticket is valid
+        print("Ticket verified")
+        secure_sock.write(dataRequest(patientID))
     else:
-        print('time stamp is wrong')
-        return -1
+        print("Ticket could not be verified")
+        sys.exit(0)
+
+
+def verifyTicket(Ticket, timestamp, patientID):  
+    ticket = tick.decrypt(Ticket.encode('latin1'))
+    ticket = json.loads(ticket)
+    #ticket = ticket.decode('latin1')
+
+    userID = ticket["user_id"]
+    ticketts = ticket["timestamp"]
+    role = ticket["role"]
+
+    print('Printing ticket information')
+    print(userID)
+    print(ticketts)
+    print(role)
+
+    # if (float(timestamp)-ticketts) < 60:
+    #     print('Timestamp mismatch')
+    #     return False
+
+    print('Timestamp is within acceptable range')
+
+    print(patientID)
+    patientFile = dataRequest(patientID)                        #get requested patient data from files
+    record = enc.decrypt(patientFile['record'].encode("latin1"))                           #decrypt patient file with dataKey
+
+    return True
     
 
 def dataUpload(json_file):
-    path = 'Database/Patient Records/'
-    fileList = os.listdir(path)
-
-    for i in fileList:
-        if os.path.isfile(os.path.join(path,json_file)):
-            ask = int(input('\nPatient file is already in the system! Would you like to update? 1 for Yes, 2 for No\n'))
-            if ask == 1:
-                os.remove(os.path.join(path,json_file))
-                dataUpload(json_file)
-            else:
-                return -1
-        else:
-            with open(json_file) as fo:
-                data = json.loads(fo.read())
-
-                encrypted = enc.encrypt(data['record'].encode("latin1"))
-
-                data['ds'] = data['ds'].encode("latin1")          
-                # os.remove(json_file)
-            shutil.move(format_in(json_file, encrypted, data['ds'], data['did'], data['pid'],data['role']), path)
-            print('\nMessage: File successfully stored into the database!\n')
-            break
+    with open(json_file, 'rb') as fo:
+        data = json.loads(fo.read())
+    format_in(data)
                 
 
-def dataRequest(pID):                                      #open file folder and look for file with pID
-    path = 'Database/Patient Records/'
-    fileList = os.listdir(path)
+def dataRequest(hpid):       
 
-    for i in fileList:
-        if os.path.isfile(os.path.join(path,pID + '.json')):
-            with open(os.path.join(path,pID + '.json')) as fo:
-
-                data = json.loads(fo.read())
-                dec = enc.decrypt(data['record'].encode("latin1"))
-                print(data['ds'])
-                
-                with open(pID + '.pdf', 'wb') as fo:
-                    fo.write(dec)
-                data['ds'] = data['ds'].encode("latin1")
-
-                format_out(pID,dec,data['ds'])
-                
-                print ('\nMessage: File successfully returned!\n')
-                break
-        else:
-            print('\nError: Patient file does not exist!\n')
-            return -1
-
-def format_out(name, enc, ds): 
+    ######## TEST ##########
+    # pid_hash_func = hashes.Hash(hashes.SHA256(), backend=default_backend())
+    # pid_hash_func.update(hpid.encode('utf-8'))
+    # hpid2 = pid_hash_func.finalize()
+    ########################
+          
+    with sqlite3.connect("patient_database.db") as db:
+        cursor = db.cursor()
+    
+    find_user = "SELECT * FROM user WHERE pid = ?"
+    cursor.execute(find_user, [hpid])
+    results = cursor.fetchone()
+    
+    if results:
+        dec = enc.decrypt(results[3])
+#         with open('result' + '.pdf', 'wb') as fo:
+#             fo.write(base64.b64decode(dec)) 
+        r_record = format_out('result',dec,results[4])
+        return r_record
+    else:
+        print('\nError: Patient file does not exist!\n')
+        return -1
+    
+def format_out(name, record, ds): 
 # Format to go out of record server
+
     data = {
-        "record": enc.decode("latin1"),
-        "ds": ds.decode("latin1") 
+        "record": record.decode("latin1"),
+        "ds": ds.decode("latin1")
         }
     
-    with open(name +'.json', 'w') as fo:
-        json.dump(data,fo)
-        
-    return name + '.json'
+    # with open(name +'.json', 'w') as fo:
+    #     json.dump(data,fo)
+    
+    #return (name + '.json')
+    return data
 
-def format_in(file_name, enc, ds, did, pid, role):
+def format_in(data):
 # Format to store into database
-    
-    data = {
-        "did": did,
-        "pid": pid,
-        "role": role,
-        "record": enc.decode('latin1'),
-        "ds": ds.decode('latin1')
-    }
-    
-    with open(file_name, 'w') as fo:
-        json.dump(data,fo)
-        
-    return file_name
+    with sqlite3.connect("patient_database.db") as db:
+        cursor = db.cursor()
+
+    aesdata = enc.encrypt(data['record'].encode('latin1'))
+
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS user(
+        userid VARBINARY(300) NOT NULL,
+        pid VARBINARY(300) NOT NULL,
+        role VARBINARY(300) NOT NULL,
+        aesdata VARBINARY(300) NOT NULL,
+        ds VARBINARY(300) NOT NULL);
+        """)
+    ''' FORMAT : userid, H{pid}, role, AES{data}, ds'''
+
+    params = (data['uid'],data['pid'].encode('latin1'),data['role'],aesdata,data['ds'].encode('latin1'))
+
+    cursor.execute("""
+        INSERT INTO user(userid, pid, role, aesdata, ds)
+        VALUES(?,?,?,?,?)""", params)
+    db.commit()
+
+    cursor.execute("SELECT * FROM user")
 
 # ############# Receive Message ###############
 # data = message
@@ -163,16 +174,63 @@ enc = Fernet(dataKey)
 tick = Fernet(ticketKey)
 clear = lambda: os.system('clear')
 
-################################## UPLOAD ####################################
-while True:
-    #clear()
-    choice = int(input("- Press '1' to UPLOAD a record.\n- Press '2' to RETRIEVE a record.\n- Press '3' to exit.\n"))
+if __name__ == '__main__':
+    # print("test if datarequest works")
+    # req_pid = '1111'
+    # id_hash_func = hashes.Hash(hashes.SHA256(), backend=default_backend())    #hash the patient id
+    # id_hash_func.update(req_pid.encode('utf-8'))
+    # hashed_id = id_hash_func.finalize()
+    # patientFile = dataRequest(hashed_id)
+    # #print(patientFile)
+    # #patientFile = json.loads(patientFile)
+    # #record = enc.decrypt(patientFile['record'].encode("latin1"))
+    # print(patientFile['record'])
 
-    if choice == 1:
-        dataUpload(str(input("Enter name of file to upload: ")))
-    elif choice == 2:
-        dataRequest(str(input("Enter patientID: ")))
-    elif choice == 3:
-        exit()
-    else:
-        print("Please select a valid option!")
+
+
+    print("record server starting")
+    HOST = '127.0.0.1'
+    PORT = 1235
+    cwd_path = Path.cwd()
+    certs_path = str(cwd_path) + r"\sslsockets_commit"
+
+    while True:
+        server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        server_socket.bind((HOST, PORT))
+        server_socket.listen(10)
+
+        client, fromaddr = server_socket.accept()
+        secure_sock = ssl.wrap_socket(client, server_side=True, ca_certs=(certs_path+r"\client.pem"),
+                                      certfile=(certs_path+r"\server.pem"),
+                                      keyfile=(certs_path+r"\server.key"),
+                                      cert_reqs=ssl.CERT_REQUIRED,
+                                      ssl_version=ssl.PROTOCOL_TLSv1_2)
+        cert = secure_sock.getpeercert()
+        response = 'acknowledge from server'
+
+        print("client connected: " + str(fromaddr))
+
+
+        req_data = secure_sock.read(2048)
+        print("RECEIVED REQUESTED DATA INFO:")
+        getRecord(req_data)
+
+        secure_sock.close()
+        server_socket.close()
+sys.exit(0)
+
+
+# ################################## UPLOAD ####################################
+# while True:
+#     #clear()
+#     choice = int(input("- Press '1' to UPLOAD a record.\n- Press '2' to RETRIEVE a record.\n- Press '3' to exit.\n"))
+
+#     if choice == 1:
+#         dataUpload(str(input("Enter name of file to upload: ")))
+#     elif choice == 2:
+#         dataRequest(str(input("Enter patientID: ")))
+#     elif choice == 3:
+#         exit()
+#     else:
+#         print("Please select a valid option!")
