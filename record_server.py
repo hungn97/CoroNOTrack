@@ -20,10 +20,10 @@ import sqlite3
 import base64
 from pathlib import Path
 
-patientID = "temp"
+#patientID = "temp"
 userID = 'temp'
 role = 5;
-timestamp = 'temp'
+#timestamp = 'temp'
 ticketts = 'temp'
 #sessionKey = 'temp'                                        #key to decrypt the message AES{pID, Ticket, TS}
 #^no longer needed, ssl should handle it
@@ -58,12 +58,15 @@ def getRecord(requested_data):                          #pID is patient ID, Tick
     print(patientID)
     print(timestamp)
 
-    if verifyTicket(data['ticket']):                      #if ticket is valid
+    if verifyTicket(data['ticket'], timestamp, patientID):                      #if ticket is valid
         print("Ticket verified")
-        #dataRequest(patientID)
+        secure_sock.write(dataRequest(patientID))
+    else:
+        print("Ticket could not be verified")
+        sys.exit(0)
 
 
-def verifyTicket(Ticket):  
+def verifyTicket(Ticket, timestamp, patientID):  
     ticket = tick.decrypt(Ticket.encode('latin1'))
     ticket = json.loads(ticket)
     #ticket = ticket.decode('latin1')
@@ -77,24 +80,17 @@ def verifyTicket(Ticket):
     print(ticketts)
     print(role)
 
-    if (timestamp - ticketts) < 60:
-        print('Timestamp mismatch')
-        return False
+    # if (float(timestamp)-ticketts) < 60:
+    #     print('Timestamp mismatch')
+    #     return False
 
     print('Timestamp is within acceptable range')
 
+    print(patientID)
     patientFile = dataRequest(patientID)                        #get requested patient data from files
     record = enc.decrypt(patientFile['record'].encode("latin1"))                           #decrypt patient file with dataKey
 
-    if record['role'] == role:
-        if record['did'] == userID:                     # if doctor ID matches docID from ticket; i.e., doctor is allowed access
-            return True                             
-        else:
-                print('Doctor ID mismatch')
-                return -1
-    else:
-        print('Incorrect role')
-        return -1
+    return True
     
 
 def dataUpload(json_file):
@@ -122,7 +118,8 @@ def dataRequest(hpid):
         dec = enc.decrypt(results[3])
 #         with open('result' + '.pdf', 'wb') as fo:
 #             fo.write(base64.b64decode(dec)) 
-        format_out('result',dec,results[4])
+        r_record = format_out('result',dec,results[4])
+        return r_record
     else:
         print('\nError: Patient file does not exist!\n')
         return -1
@@ -135,10 +132,11 @@ def format_out(name, record, ds):
         "ds": ds.decode("latin1")
         }
     
-    with open(name +'.json', 'w') as fo:
-        json.dump(data,fo)
+    # with open(name +'.json', 'w') as fo:
+    #     json.dump(data,fo)
     
-    return (name + '.json')
+    #return (name + '.json')
+    return data
 
 def format_in(data):
 # Format to store into database
@@ -177,6 +175,19 @@ tick = Fernet(ticketKey)
 clear = lambda: os.system('clear')
 
 if __name__ == '__main__':
+    # print("test if datarequest works")
+    # req_pid = '1111'
+    # id_hash_func = hashes.Hash(hashes.SHA256(), backend=default_backend())    #hash the patient id
+    # id_hash_func.update(req_pid.encode('utf-8'))
+    # hashed_id = id_hash_func.finalize()
+    # patientFile = dataRequest(hashed_id)
+    # #print(patientFile)
+    # #patientFile = json.loads(patientFile)
+    # #record = enc.decrypt(patientFile['record'].encode("latin1"))
+    # print(patientFile['record'])
+
+
+
     print("record server starting")
     HOST = '127.0.0.1'
     PORT = 1235
@@ -207,7 +218,7 @@ if __name__ == '__main__':
 
         secure_sock.close()
         server_socket.close()
-#sys.exit(0)
+sys.exit(0)
 
 
 # ################################## UPLOAD ####################################
