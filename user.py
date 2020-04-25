@@ -10,7 +10,7 @@ import json
 import os
 import pickle
 import time
-
+import base64
 
 with open("user_priv_key.pem", "rb") as key_file:
     user_private_key = serialization.load_pem_private_key(
