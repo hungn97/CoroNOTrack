@@ -27,6 +27,12 @@ with open("auth_pub_key.pem", "rb") as key_file:
         backend=default_backend()
     )
 
+with open("user_pub_key.pem", "rb") as key_file:
+    user_public_key = serialization.load_pem_public_key(
+        key_file.read(),
+        backend=default_backend()
+    )
+
 def create_auth_message_1():
     """Takes in a user id and user pw and returns a plaintext json message"""
     user_id = input('Enter User ID\n>')
@@ -143,21 +149,20 @@ def receive_record():
     ) as fp:
         fp.write(json_data["record"])
     record = base64.b64decode(json_data["record"])
-    # print(json_data)
+    print(json_data)
 
-    # try:
-    #     user_public_key.verify(
-    #         message["signature"].encode('latin1'),
-    #         byte_json,
-    #         padding.PSS(
-    #             mgf=padding.MGF1(hashes.SHA256()),
-    #             salt_length=padding.PSS.MAX_LENGTH
-    #         ),
-    #         hashes.SHA256()
-    #         )
-    # except:
-    #     # print("INVALID SIG")
-    #     match = 2  # invalid signature
+    try:
+        user_public_key.verify(
+            json_data["signature"].encode('latin1'),
+            json_data["record"].encode('latin1'),
+            padding.PSS(
+                mgf=padding.MGF1(hashes.SHA256()),
+                salt_length=padding.PSS.MAX_LENGTH
+            ),
+            hashes.SHA256()
+            )
+    except:
+        print("INVALID SIG")
 
     with open(os.path.join(
             '.', 'record.pdf'), 'wb'
