@@ -12,6 +12,7 @@ import pickle
 import time
 import base64
 from struct import unpack
+import base64
 
 with open("user_priv_key.pem", "rb") as key_file:
     user_private_key = serialization.load_pem_private_key(
@@ -127,11 +128,27 @@ def receive_record():
         secure_sock.close()
         sock.close()
     json_data = json.loads(data)
-    print(json_data)
+    record = base64.b64decode(json_data["record"])
+    # print(json_data)
+
+    # try:
+    #     user_public_key.verify(
+    #         message["signature"].encode('latin1'),
+    #         byte_json,
+    #         padding.PSS(
+    #             mgf=padding.MGF1(hashes.SHA256()),
+    #             salt_length=padding.PSS.MAX_LENGTH
+    #         ),
+    #         hashes.SHA256()
+    #         )
+    # except:
+    #     # print("INVALID SIG")
+    #     match = 2  # invalid signature
+
     with open(os.path.join(
-            '.', 'record.pdf'), 'w'
+            '.', 'record.pdf'), 'wb'
     ) as fp:
-        fp.write(json_data["record"])
+        fp.write(record)
 
 
 # client

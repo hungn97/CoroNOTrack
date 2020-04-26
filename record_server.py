@@ -21,6 +21,7 @@ import base64
 from pathlib import Path
 from struct import pack
 
+
 with open("ticketkey.txt","r") as ticket_key_file:                                 #read ticket key from file
     ticket_key = ticket_key_file.read().encode('latin1')
 tick = Fernet(ticket_key)
@@ -122,11 +123,11 @@ def dataRequest(hpid):
     # print(results)
     if results:
         dec = enc.decrypt(results[3])
-        with open(os.path.join(
-                '.', 'record2.pdf'), 'wb'
-        ) as fp:
-            print(dec)
-            fp.write(dec)
+        # with open(os.path.join(
+        #         '.', 'record2.pdf'), 'wb'
+        # ) as fp:
+        #     print(dec)
+        #     fp.write(dec)
 #         with open('result' + '.pdf', 'wb') as fo:
 #             fo.write(base64.b64decode(dec))
         #########################################################################################################
