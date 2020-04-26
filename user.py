@@ -142,7 +142,6 @@ def receive_record():
             '.', 'record.pdf'), 'w'
     ) as fp:
         fp.write(json_data["record"])
-
     record = base64.b64decode(json_data["record"])
     # print(json_data)
 

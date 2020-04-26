@@ -95,6 +95,7 @@ def verifyTicket(Ticket, timestamp, patientID):
     print('Timestamp is within acceptable range')
 
     #print(type(patientID))
+
     return True
     
 
@@ -105,7 +106,6 @@ def dataUpload(json_file):
                 
 
 def dataRequest(hpid, doc_num):
-
     ######## TEST ##########
     # pid_hash_func = hashes.Hash(hashes.SHA256(), backend=default_backend())
     # pid_hash_func.update(hpid.encode('utf-8'))
