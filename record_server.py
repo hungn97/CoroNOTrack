@@ -21,6 +21,7 @@ import base64
 from pathlib import Path
 from struct import pack
 
+
 with open("ticketkey.txt","r") as ticket_key_file:                                 #read ticket key from file
     ticket_key = ticket_key_file.read().encode('latin1')
 tick = Fernet(ticket_key)
@@ -76,6 +77,7 @@ def getRecord(requested_data):                          #pID is patient ID, Tick
 def verifyTicket(Ticket, timestamp, patientID):  
     ticket = tick.decrypt(Ticket.encode('latin1'))
     ticket = json.loads(ticket)
+    #ticket = ticket.decode('latin1')
 
     userID = ticket["user_id"]
     ticketts = ticket["timestamp"]
@@ -91,9 +93,8 @@ def verifyTicket(Ticket, timestamp, patientID):
         return False
 
     print('Timestamp is within acceptable range')
-    print(type(patientID))
-    # patientFile = dataRequest(patientID)                        #get requested patient data from files
-    # record = enc.decrypt(patientFile['record'].encode("latin1"))                           #decrypt patient file with dataKey
+
+    #print(type(patientID))
     return True
     
 
@@ -104,6 +105,7 @@ def dataUpload(json_file):
                 
 
 def dataRequest(hpid, doc_num):
+
     ######## TEST ##########
     # pid_hash_func = hashes.Hash(hashes.SHA256(), backend=default_backend())
     # pid_hash_func.update(hpid.encode('utf-8'))
@@ -120,11 +122,11 @@ def dataRequest(hpid, doc_num):
     # print(results)
     if results:
         dec = enc.decrypt(results[3])
-        with open(os.path.join(
-                '.', 'record2.pdf'), 'wb'
-        ) as fp:
-            print(dec)
-            fp.write(dec)
+        # with open(os.path.join(
+        #         '.', 'record2.pdf'), 'wb'
+        # ) as fp:
+        #     print(dec)
+        #     fp.write(dec)
 #         with open('result' + '.pdf', 'wb') as fo:
 #             fo.write(base64.b64decode(dec))
         #########################################################################################################
@@ -133,7 +135,7 @@ def dataRequest(hpid, doc_num):
             "record": dec.decode('latin1'),
             "signature": results[4].decode('latin1')
         }
-        #print(r_record)
+        # print(r_record)
         return json.dumps(r_record).encode('latin1')
         ########################################################################################################
     else:
@@ -219,7 +221,7 @@ if __name__ == '__main__':
 
         secure_sock.close()
         server_socket.close()
-#sys.exit(0)
+sys.exit(0)
 
 
 # ################################## UPLOAD ####################################
