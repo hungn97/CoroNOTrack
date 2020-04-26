@@ -91,6 +91,13 @@ def create_auth_message_2(nonce_2):
 
 def create_record_request(enc_ticket):
     req_pid = input('Enter Requested Patients ID\n>')
+
+    print('Which Document do you want to access?')
+    print('1. Patient Data')
+    print('2. Insurance Info')
+    print('3. Insurance Coverage')
+    print('4. Insurance Transaction History')
+    doc_num = input('Enter choice number:')
     timestamp = time.time()                         #get time for timestamp
 
     id_hash_func = hashes.Hash(hashes.SHA256(), backend=default_backend())    #hash the patient id
@@ -100,6 +107,7 @@ def create_record_request(enc_ticket):
     request_data = {
         "patient_id":hashed_id.decode('latin1'),
         "ticket": enc_ticket.decode('latin1'),
+        "doc_number": doc_num,
         "ts": timestamp
     }
 
@@ -180,16 +188,15 @@ if __name__ == '__main__':
     request = create_record_request(ticket);                    #create a record request using ticket from auth server
     secure_sock.write(request)
 
-    requested_record = secure_sock.read(52000)
+    requested_record = secure_sock.read(100000)
     print('--------------------------')
     print('Here is the requested record:')
     print(requested_record)
 
     #if verifyRecordSignature():
 
-    requested_record = secure_sock.read(2048)
     with open('record' + '.pdf', 'wb') as fo:
            fo.write(base64.b64decode(requested_record['record']))
 
     #print('Requested record returned successfully')
-    sys.exit(0)
+    #sys.exit(0)

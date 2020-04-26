@@ -50,13 +50,15 @@ def getRecord(requested_data):                          #pID is patient ID, Tick
     data = json.loads(requested_data.decode('latin1'))        #convert from bytes to string, then load json into data
     patientID = data['patient_id'].encode('latin1')
     timestamp = data['ts']
+    doc_num = data['doc_number']
     print(patientID)
     print(timestamp)
+    print(doc_num)
 
     if verifyTicket(data['ticket'], timestamp, patientID):                      #if ticket is valid
         print("Ticket verified")
-        print(dataRequest(patientID))
-        secure_sock.write(dataRequest(patientID))
+        print(dataRequest(patientID, doc_num))
+        secure_sock.write(dataRequest(patientID, doc_num))
         sys.exit(0)
     else:
         print("Ticket could not be verified")
@@ -66,7 +68,6 @@ def getRecord(requested_data):                          #pID is patient ID, Tick
 def verifyTicket(Ticket, timestamp, patientID):  
     ticket = tick.decrypt(Ticket.encode('latin1'))
     ticket = json.loads(ticket)
-    #ticket = ticket.decode('latin1')
 
     userID = ticket["user_id"]
     ticketts = ticket["timestamp"]
@@ -77,16 +78,11 @@ def verifyTicket(Ticket, timestamp, patientID):
     print(ticketts)
     print(role)
 
-    # if (float(timestamp)-ticketts) < 60:
-    #     print('Timestamp mismatch')
-    #     return False
+    if float(timestamp)-ticketts > 60:                         #verify ticket is valid
+        print('Timestamp mismatch')
+        return False
 
     print('Timestamp is within acceptable range')
-
-    print(type(patientID))
-    patientFile = dataRequest(patientID)                        #get requested patient data from files
-    # record = enc.decrypt(patientFile['record'].encode("latin1"))                           #decrypt patient file with dataKey
-
     return True
     
 
@@ -96,7 +92,7 @@ def dataUpload(json_file):
     format_in(data)
                 
 
-def dataRequest(hpid):
+def dataRequest(hpid, doc_num):
     ######## TEST ##########
     # pid_hash_func = hashes.Hash(hashes.SHA256(), backend=default_backend())
     # pid_hash_func.update(hpid.encode('utf-8'))
@@ -109,8 +105,8 @@ def dataRequest(hpid):
     find_user = "SELECT * FROM user WHERE pid = ?"
     cursor.execute(find_user, [hpid])
     results = cursor.fetchone()
-    print("RESULTS")
-    print(results)
+    #print("RESULTS")
+    #print(results)
     if results:
         dec = enc.decrypt(results[3])
 #         with open('result' + '.pdf', 'wb') as fo:
@@ -121,7 +117,7 @@ def dataRequest(hpid):
             "record": dec.decode('latin1'),
             "signature": results[4].decode('latin1')
         }
-        print(r_record)
+        #print(r_record)
         return json.dumps(r_record).encode('latin1')
         ########################################################################################################
     else:
@@ -177,21 +173,6 @@ def format_in(data):
 clear = lambda: os.system('clear')
 
 if __name__ == '__main__':
-    # print("test if datarequest works")
-    # req_pid = '1111'
-    # id_hash_func = hashes.Hash(hashes.SHA256(), backend=default_backend())    #hash the patient id
-    # id_hash_func.update(req_pid.encode('utf-8'))
-    # hashed_id = id_hash_func.finalize()
-    # print(hashed_id)
-    # print(type(hashed_id))
-    # patientFile = dataRequest(hashed_id)
-    # #print(patientFile)
-    # #patientFile = json.loads(patientFile)
-    # #record = enc.decrypt(patientFile['record'].encode("latin1"))
-    # print(patientFile)
-
-
-
     print("record server starting")
     HOST = '127.0.0.1'
     PORT = 1235
@@ -222,7 +203,7 @@ if __name__ == '__main__':
 
         secure_sock.close()
         server_socket.close()
-sys.exit(0)
+#sys.exit(0)
 
 
 # ################################## UPLOAD ####################################
