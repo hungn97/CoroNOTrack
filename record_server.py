@@ -56,9 +56,14 @@ def getRecord(requested_data):                          #pID is patient ID, Tick
     print(timestamp)
     print(doc_num)
 
+    ticket = tick.decrypt(data['ticket'].encode('latin1'))
+    ticket = json.loads(ticket)
+
+    role = ticket["role"]
+
     if verifyTicket(data['ticket'], timestamp, patientID):                      #if ticket is valid
         print("Ticket verified")
-        returned_query = dataRequest(patientID, doc_num)
+        returned_query = dataRequest(patientID, doc_num, role)
         print(returned_query)
         # secure_sock.write(returned_query)
 
@@ -102,21 +107,55 @@ def verifyTicket(Ticket, timestamp, patientID):
 def dataUpload(json_file):
     with open(json_file, 'rb') as fo:
         data = json.loads(fo.read())
-    format_in(data)
-                
+    format_in(data) 
 
-def dataRequest(hpid, doc_num):
-    ######## TEST ##########
-    # pid_hash_func = hashes.Hash(hashes.SHA256(), backend=default_backend())
-    # pid_hash_func.update(hpid.encode('utf-8'))
-    # hpid2 = pid_hash_func.finalize()
-    ########################
-          
+def accessctrl(doc_num, role):
+    if doc_num == '1':
+        access = '10'
+        check = list(access)
+        if (role == int(check[0]) or role == int(check[1])):
+            return access
+        else:
+            print('Sorry you are not allowed to access this file!')
+            return -1
+
+    elif doc_num == '2':
+        access = '20'
+        check = list(access)
+        if (role == int(check[0]) or role == int(check[1])):
+            return access
+        else:
+            print('Sorry you are not allowed to access this file!')
+            return -1
+
+    elif doc_num == '3':
+        access = '12'
+        check = list(access)
+        if (role == int(check[0]) or role == int(check[1])):
+            return access
+        else:
+            print('Sorry you are not allowed to access this file!')
+            return -1
+    
+    elif doc_num == '4':
+        access = '120'
+        check = list(access)
+        if (role == int(check[0]) or role == int(check[1]) or role == int(check[2])):
+            return access
+        else:
+            print('Sorry you are not allowed to access this file!')
+            return -1
+
+
+def dataRequest(hpid, doc_num, role):
+    
+    access = accessctrl(doc_num,role)
+
     with sqlite3.connect("patient_database.db") as db:
         cursor = db.cursor()
-    
-    find_user = "SELECT * FROM user WHERE pid = ?"
-    cursor.execute(find_user, [hpid])
+
+    find_user = "SELECT * FROM user WHERE pid = ? AND role = ?"
+    cursor.execute(find_user, [hpid,access])
     results = cursor.fetchone()
     # print("RESULTS")
     # print(results)
@@ -195,7 +234,7 @@ if __name__ == '__main__':
     HOST = '127.0.0.1'
     PORT = 1235
     cwd_path = Path.cwd()
-    certs_path = str(cwd_path) + r"\sslsockets_commit"
+    certs_path = str(cwd_path) + r"/sslsockets_commit"
 
     while True:
         server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -204,9 +243,9 @@ if __name__ == '__main__':
         server_socket.listen(10)
 
         client, fromaddr = server_socket.accept()
-        secure_sock = ssl.wrap_socket(client, server_side=True, ca_certs=(certs_path+r"\client.pem"),
-                                      certfile=(certs_path+r"\server.pem"),
-                                      keyfile=(certs_path+r"\server.key"),
+        secure_sock = ssl.wrap_socket(client, server_side=True, ca_certs=(certs_path+r"/client.pem"),
+                                      certfile=(certs_path+r"/server.pem"),
+                                      keyfile=(certs_path+r"/server.key"),
                                       cert_reqs=ssl.CERT_REQUIRED,
                                       ssl_version=ssl.PROTOCOL_TLSv1_2)
         cert = secure_sock.getpeercert()
