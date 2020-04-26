@@ -234,7 +234,7 @@ if __name__ == '__main__':
     HOST = '127.0.0.1'
     PORT = 1235
     cwd_path = Path.cwd()
-    certs_path = str(cwd_path) + r"/sslsockets_commit"
+    certs_path = str(cwd_path) + r"\sslsockets_commit"
 
     while True:
         server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -243,9 +243,9 @@ if __name__ == '__main__':
         server_socket.listen(10)
 
         client, fromaddr = server_socket.accept()
-        secure_sock = ssl.wrap_socket(client, server_side=True, ca_certs=(certs_path+r"/client.pem"),
-                                      certfile=(certs_path+r"/server.pem"),
-                                      keyfile=(certs_path+r"/server.key"),
+        secure_sock = ssl.wrap_socket(client, server_side=True, ca_certs=(certs_path+r"\client.pem"),
+                                      certfile=(certs_path+r"\server.pem"),
+                                      keyfile=(certs_path+r"\server.key"),
                                       cert_reqs=ssl.CERT_REQUIRED,
                                       ssl_version=ssl.PROTOCOL_TLSv1_2)
         cert = secure_sock.getpeercert()
