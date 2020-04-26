@@ -13,6 +13,7 @@ import time
 import base64
 from struct import unpack
 import base64
+import binascii
 
 with open("user_priv_key.pem", "rb") as key_file:
     user_private_key = serialization.load_pem_private_key(
@@ -32,6 +33,8 @@ with open("user_pub_key.pem", "rb") as key_file:
         key_file.read(),
         backend=default_backend()
     )
+
+file_num = 0
 
 def create_auth_message_1():
     """Takes in a user id and user pw and returns a plaintext json message"""
@@ -98,8 +101,11 @@ def create_auth_message_2(nonce_2):
     return message
 
 def create_record_request(enc_ticket):
-    req_pid = input('Enter Requested Patients ID\n>')
-
+    req_pid = input('Enter Requested Patients ID or \"exit\" to quit\n>')
+    if(req_pid == "exit"):
+        secure_sock.close()
+        sock.close()
+        exit(0)
     print('Which Document do you want to access?')
     print('1. Patient Data')
     print('2. Insurance Info')
@@ -123,7 +129,7 @@ def create_record_request(enc_ticket):
 
     return message
 
-def receive_record():
+def receive_record(file_num):
     try:
         bs = secure_sock.recv(8)
         (length,) = unpack('>Q', bs)
@@ -143,18 +149,19 @@ def receive_record():
         sock.close()
     json_data = json.loads(data)
 
-    print(json_data)
+    # print(json_data)
     with open(os.path.join(
             '.', 'record.pdf'), 'w'
     ) as fp:
         fp.write(json_data["record"])
     record = base64.b64decode(json_data["record"])
-    print(json_data)
-
+    # print(json_data)
+    # print(type(json_data["signature"].encode('latin1')))
+    # print(type(binascii.hexlify(record)))
     try:
         user_public_key.verify(
             json_data["signature"].encode('latin1'),
-            json_data["record"].encode('latin1'),
+            binascii.hexlify(record),
             padding.PSS(
                 mgf=padding.MGF1(hashes.SHA256()),
                 salt_length=padding.PSS.MAX_LENGTH
@@ -163,11 +170,13 @@ def receive_record():
             )
     except:
         print("INVALID SIG")
+        return
 
     with open(os.path.join(
-            '.', 'record.pdf'), 'wb'
+            '.', str(file_num)+'record.pdf'), 'wb'
     ) as fp:
         fp.write(record)
+
 
 
 # client
@@ -218,31 +227,34 @@ if __name__ == '__main__':
     secure_sock.close() 
     sock.close()                              #close socket to auth server, open one to record server
     print("CONNECTION TO AUTH SERVER CLOSED")
-    HOST = '127.0.0.1'
-    PORT = 1235
-    cwd_path = Path.cwd()
-    certs_path = str(cwd_path) + r"\sslsockets_commit"
+    while(True):
+        HOST = '127.0.0.1'
+        PORT = 1235
+        cwd_path = Path.cwd()
+        certs_path = str(cwd_path) + r"\sslsockets_commit"
 
-    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    sock.setblocking(1);
-    sock.connect((HOST, PORT))
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        sock.setblocking(1);
+        sock.connect((HOST, PORT))
 
-    context = ssl.SSLContext(ssl.PROTOCOL_TLSv1_2)
-    context.verify_mode = ssl.CERT_REQUIRED
-    context.load_verify_locations(certs_path+r'\server.pem')
-    context.load_cert_chain(certfile=certs_path+r"\client.pem", keyfile=certs_path+r"\client.key")
+        context = ssl.SSLContext(ssl.PROTOCOL_TLSv1_2)
+        context.verify_mode = ssl.CERT_REQUIRED
+        context.load_verify_locations(certs_path+r'\server.pem')
+        context.load_cert_chain(certfile=certs_path+r"\client.pem", keyfile=certs_path+r"\client.key")
 
-    if ssl.HAS_SNI:
-        secure_sock = context.wrap_socket(sock, server_side=False, server_hostname=HOST)
-    else:
-        secure_sock = context.wrap_socket(sock, server_side=False)
+        if ssl.HAS_SNI:
+            secure_sock = context.wrap_socket(sock, server_side=False, server_hostname=HOST)
+        else:
+            secure_sock = context.wrap_socket(sock, server_side=False)
 
-    cert = secure_sock.getpeercert()
+        cert = secure_sock.getpeercert()
 
-    request = create_record_request(ticket);                    #create a record request using ticket from auth server
-    secure_sock.write(request)
+        request = create_record_request(ticket);                    #create a record request using ticket from auth server
+        secure_sock.write(request)
 
-    receive_record()
+        receive_record(file_num)
+        file_num = file_num + 1
+        # print(file_num)
     # requested_record = secure_sock.recv(71680)
     # print('--------------------------')
     # print('Here is the requested record:')
