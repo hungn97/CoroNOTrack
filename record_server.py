@@ -19,7 +19,7 @@ import pickle
 import sqlite3
 import base64
 from pathlib import Path
-
+from struct import pack
 
 with open("ticketkey.txt","r") as ticket_key_file:                                 #read ticket key from file
     ticket_key = ticket_key_file.read().encode('latin1')
@@ -55,12 +55,20 @@ def getRecord(requested_data):                          #pID is patient ID, Tick
 
     if verifyTicket(data['ticket'], timestamp, patientID):                      #if ticket is valid
         print("Ticket verified")
-        print(dataRequest(patientID))
-        secure_sock.write(dataRequest(patientID))
-        sys.exit(0)
+        returned_query = dataRequest(patientID)
+        print(returned_query)
+        # secure_sock.write(returned_query)
+
+        length = pack('>Q', len(returned_query))
+
+        # sendall to make sure it blocks if there's back-pressure on the socket
+        secure_sock.sendall(length)
+        secure_sock.sendall(returned_query)
+
+        ack = secure_sock.recv(1)
+        # handle bad ack
     else:
         print("Ticket could not be verified")
-        sys.exit(0)
 
 
 def verifyTicket(Ticket, timestamp, patientID):  
@@ -84,7 +92,7 @@ def verifyTicket(Ticket, timestamp, patientID):
     print('Timestamp is within acceptable range')
 
     print(type(patientID))
-    patientFile = dataRequest(patientID)                        #get requested patient data from files
+    # patientFile = dataRequest(patientID)                        #get requested patient data from files
     # record = enc.decrypt(patientFile['record'].encode("latin1"))                           #decrypt patient file with dataKey
 
     return True
@@ -97,6 +105,7 @@ def dataUpload(json_file):
                 
 
 def dataRequest(hpid):
+
     ######## TEST ##########
     # pid_hash_func = hashes.Hash(hashes.SHA256(), backend=default_backend())
     # pid_hash_func.update(hpid.encode('utf-8'))
@@ -109,10 +118,15 @@ def dataRequest(hpid):
     find_user = "SELECT * FROM user WHERE pid = ?"
     cursor.execute(find_user, [hpid])
     results = cursor.fetchone()
-    print("RESULTS")
-    print(results)
+    # print("RESULTS")
+    # print(results)
     if results:
         dec = enc.decrypt(results[3])
+        with open(os.path.join(
+                '.', 'record2.pdf'), 'wb'
+        ) as fp:
+            print(dec)
+            fp.write(dec)
 #         with open('result' + '.pdf', 'wb') as fo:
 #             fo.write(base64.b64decode(dec))
         #########################################################################################################
@@ -121,7 +135,7 @@ def dataRequest(hpid):
             "record": dec.decode('latin1'),
             "signature": results[4].decode('latin1')
         }
-        print(r_record)
+        # print(r_record)
         return json.dumps(r_record).encode('latin1')
         ########################################################################################################
     else:

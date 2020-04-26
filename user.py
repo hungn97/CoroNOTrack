@@ -11,6 +11,7 @@ import os
 import pickle
 import time
 import base64
+from struct import unpack
 
 with open("user_priv_key.pem", "rb") as key_file:
     user_private_key = serialization.load_pem_private_key(
@@ -107,6 +108,31 @@ def create_record_request(enc_ticket):
 
     return message
 
+def receive_record():
+    try:
+        bs = secure_sock.recv(8)
+        (length,) = unpack('>Q', bs)
+        data = b''
+        while len(data) < length:
+            # doing it in batches is generally better than trying
+            # to do it all in one go, so I believe.
+            to_read = length - len(data)
+            data += secure_sock.recv(
+                4096 if to_read > 4096 else to_read)
+
+        # send our 0 ack
+        assert len(b'\00') == 1
+        secure_sock.sendall(b'\00')
+    finally:
+        secure_sock.close()
+        sock.close()
+    json_data = json.loads(data)
+    print(json_data)
+    with open(os.path.join(
+            '.', 'record.pdf'), 'w'
+    ) as fp:
+        fp.write(json_data["record"])
+
 
 # client
 if __name__ == '__main__':
@@ -180,16 +206,18 @@ if __name__ == '__main__':
     request = create_record_request(ticket);                    #create a record request using ticket from auth server
     secure_sock.write(request)
 
-    requested_record = secure_sock.read(52000)
-    print('--------------------------')
-    print('Here is the requested record:')
-    print(requested_record)
-
-    #if verifyRecordSignature():
-
-    requested_record = secure_sock.read(2048)
-    with open('record' + '.pdf', 'wb') as fo:
-           fo.write(base64.b64decode(requested_record['record']))
+    receive_record()
+    # requested_record = secure_sock.recv(71680)
+    # print('--------------------------')
+    # print('Here is the requested record:')
+    # print(requested_record)
+    # print(requested_record[0])
+    # #if verifyRecordSignature():
+    #
+    # # requested_record = secure_sock.read(2048)
+    # # print(requested_record)
+    # with open('record' + '.pdf', 'wb') as fo:
+    #     fo.write(base64.b64decode(requested_record["record"]))
 
     #print('Requested record returned successfully')
-    sys.exit(0)
+    exit(0)
