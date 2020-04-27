@@ -48,7 +48,10 @@ enc = Fernet(record_key)
 # keep on passing it along with the encrypted/decrypted data
 
 def getRecord(requested_data):                          #pID is patient ID, Ticket is ticket from auth, TS is time stamp
-    data = json.loads(requested_data.decode('latin1'))        #convert from bytes to string, then load json into data
+    try:
+        data = json.loads(requested_data.decode('latin1'))        #convert from bytes to string, then load json into data
+    except:
+        return
     patientID = data['patient_id'].encode('latin1')
     timestamp = data['ts']
     doc_num = data['doc_number']
@@ -60,23 +63,25 @@ def getRecord(requested_data):                          #pID is patient ID, Tick
     ticket = json.loads(ticket)
 
     role = ticket["role"]
-
-    if verifyTicket(data['ticket'], timestamp, patientID):                      #if ticket is valid
+    verified, role = verifyTicket(data['ticket'], timestamp, patientID)
+    if verified:                      #if ticket is valid
         print("Ticket verified")
         returned_query = dataRequest(patientID, doc_num, role)
         print(returned_query)
-        # secure_sock.write(returned_query)
 
-        length = pack('>Q', len(returned_query))
 
-        # sendall to make sure it blocks if there's back-pressure on the socket
-        secure_sock.sendall(length)
-        secure_sock.sendall(returned_query)
-
-        ack = secure_sock.recv(1)
-        # handle bad ack
     else:
         print("Ticket could not be verified")
+        returned_query = b'-3'
+
+    length = pack('>Q', len(returned_query))
+
+    # sendall to make sure it blocks if there's back-pressure on the socket
+    secure_sock.sendall(length)
+    secure_sock.sendall(returned_query)
+
+    ack = secure_sock.recv(1)
+    # handle bad ack
 
 
 def verifyTicket(Ticket, timestamp, patientID):  
@@ -95,13 +100,13 @@ def verifyTicket(Ticket, timestamp, patientID):
 
     if float(timestamp)-ticketts > 60:                         #verify ticket is valid
         print('Timestamp mismatch')
-        return False
+        return False, -1
 
     print('Timestamp is within acceptable range')
 
     #print(type(patientID))
 
-    return True
+    return True, role
     
 
 def dataUpload(json_file):
@@ -151,6 +156,9 @@ def dataRequest(hpid, doc_num, role):
     
     access = accessctrl(doc_num,role)
 
+    if access == -1:
+        return b'-2'
+
     with sqlite3.connect("patient_database.db") as db:
         cursor = db.cursor()
 
@@ -179,7 +187,7 @@ def dataRequest(hpid, doc_num, role):
         ########################################################################################################
     else:
         print('\nError: Patient file does not exist!\n')
-        return -1
+        return b'-1'
     
 def format_out(name, record, ds): 
 # Format to go out of record server

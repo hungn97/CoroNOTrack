@@ -101,7 +101,7 @@ def create_auth_message_2(nonce_2):
     return message
 
 def create_record_request(enc_ticket):
-    req_pid = input('Enter Requested Patients ID or \"exit\" to quit\n>')
+    req_pid = input('\nEnter Requested Patients ID or \"exit\" to quit\n>')
     if(req_pid == "exit"):
         secure_sock.close()
         sock.close()
@@ -110,8 +110,9 @@ def create_record_request(enc_ticket):
     print('1. Patient Data')
     print('2. Insurance Info')
     print('3. Insurance Coverage')
-    print('4. Insurance Transaction History')
+    print('4. Insurance Transaction History\n')
     doc_num = input('Enter choice number:')
+    print("\n")
     timestamp = time.time()                         #get time for timestamp
 
     id_hash_func = hashes.Hash(hashes.SHA256(), backend=default_backend())    #hash the patient id
@@ -147,6 +148,18 @@ def receive_record(file_num):
     finally:
         secure_sock.close()
         sock.close()
+    # print(data)
+
+    if data == b'-1':
+        print("Record not found")
+        return 1
+    elif data == b'-2':
+        print("Access denied, permissions insufficient")
+        return 1
+    elif data == b'-3':
+        print("Session expired")
+        return 1
+
     json_data = json.loads(data)
 
     # print(json_data)
@@ -170,13 +183,14 @@ def receive_record(file_num):
             )
     except:
         print("INVALID SIG")
-        return
+        return 1
 
     with open(os.path.join(
             '.', str(file_num)+'record.pdf'), 'wb'
     ) as fp:
         fp.write(record)
-
+    print("Record successfully retrieved as " + str(file_num) + "record.pdf")
+    return 0
 
 
 # client
@@ -252,8 +266,8 @@ if __name__ == '__main__':
         request = create_record_request(ticket);                    #create a record request using ticket from auth server
         secure_sock.write(request)
 
-        receive_record(file_num)
-        file_num = file_num + 1
+        if receive_record(file_num) == 0:
+            file_num = file_num + 1
         # print(file_num)
     # requested_record = secure_sock.recv(71680)
     # print('--------------------------')
